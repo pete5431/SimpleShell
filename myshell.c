@@ -4,14 +4,24 @@
 #include <string.h>
 
 char** tokenize(char* input, char* delimiter);
+void free_token_array(char** token_array);
 
 int main(int argc, char* argv[]){
 
 	int bash_mode_on = 0;
+	FILE* bash_fp;
 
 	if(argc == 2){
 		
-		FILE* bash_fp = fopen(argv[1], "r");
+		bash_fp = fopen(argv[1], "r");
+
+		if(bash_fp == NULL){
+
+			printf("File open failed.\n");
+			exit(0);
+
+		}
+
 		bash_mode_on = 1;
 
 	}
@@ -26,35 +36,39 @@ int main(int argc, char* argv[]){
 
 	while(1){
 
-		getline(&user_input, &size, stdin);
+		if(bash_mode_on){
 
-		printf("user_input id: %p\n", user_input);
+			getline(&user_input, &size, bash_fp);
+
+		}else{
+
+			char* prompt = getenv("PWD");
+
+			printf("%s />", prompt);
+
+			getline(&user_input, &size, stdin);
+
+		}
 
 		char** token_array = tokenize(user_input, " \t\n");
 	
 		int i = 0;		
 
-		while(token_array[i] != NULL){
-				
+		while(token_array[i] != NULL){	
 			printf("%s\n", token_array[i]);
 			i++;
-	
 		}
 
-		if(strcmp(user_input, "exit\n") == 0){
-
-			printf("Freed user_input: %p\n", user_input);
+		if(token_array[0] != NULL && strcmp(token_array[0], "exit") == 0){
 		
 			free(user_input);
-
+			free_token_array(token_array);
 			exit(0);
-		}
-		free(token_array);
-	}
-	
-	printf("Freed user_input: %p\n", user_input);
 
-	free(user_input);
+		}
+
+		free_token_array(token_array);
+	}
 	return 0;
 }
 
@@ -64,8 +78,6 @@ char** tokenize(char* user_input, char* delimiter){
 
 	strncpy(user_copy, user_input, strlen(user_input) + 1);
 
-	printf("This is the user copy: %s\n", user_copy);
-
 	char** token_array = (char**)malloc(sizeof(char*));
 
 	char* token = strtok(user_copy, delimiter);
@@ -73,8 +85,10 @@ char** tokenize(char* user_input, char* delimiter){
 	int i = 0;
 
 	while(token != NULL){
-		
-		token_array[i] = token;
+	
+		char* token_copy = malloc((strlen(token) + 1) * sizeof(char));	
+		strncpy(token_copy, token, strlen(token) + 1);
+		token_array[i] = token_copy;
 		token = strtok(NULL, delimiter);
 		i++;
 		token_array = realloc(token_array, (i + 1) * sizeof(char*));
@@ -82,5 +96,18 @@ char** tokenize(char* user_input, char* delimiter){
 
 	token_array[i] = NULL;
 
+	free(user_copy);
+
 	return token_array;
+}
+
+void free_token_array(char** token_array){
+
+	int i = 0;
+
+	while(token_array[i] != NULL){
+		free(token_array[i]);
+		i++;
+	}
+	free(token_array);
 }
