@@ -6,6 +6,7 @@
 
 char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
+void parse_input(char** token_array, char* user_input);
 
 int main(int argc, char* argv[]){
 
@@ -34,6 +35,8 @@ int main(int argc, char* argv[]){
 
 	char* user_input = NULL;
 	size_t size = 0;
+	
+	putenv("shell=OS-Shell/myshell");
 
 	while(1){
 
@@ -49,28 +52,16 @@ int main(int argc, char* argv[]){
 
 		}else{
 
-			printf("myshell> ");
+			char* prompt = getenv("shell");
+			printf("%s> ", prompt);
 
 			getline(&user_input, &size, stdin);
 
 		}
 
 		char** token_array = tokenize(user_input, " \t\n");
-	
-		int i = 0;		
 
-		while(token_array[i] != NULL){	
-			printf("%s\n", token_array[i]);
-			i++;
-		}
-
-		if(token_array[0] != NULL && strcmp(token_array[0], "exit") == 0){
-		
-			free(user_input);
-			free_token_array(token_array);
-			exit(0);
-
-		}
+		parse_input(token_array, user_input);
 
 		free_token_array(token_array);
 	}
@@ -115,4 +106,40 @@ void free_token_array(char** token_array){
 		i++;
 	}
 	free(token_array);
+}
+
+void parse_input(char** token_array, char* user_input){
+
+	int i = 0;
+
+	if(token_array[0] != NULL){
+
+		if(strcmp(token_array[0], "cd") == 0){
+
+			printf("Ey cd\n");
+
+		}
+		else if(strcmp(user_input, "exit\n") == 0){
+
+
+			free(user_input);
+			free_token_array(token_array);
+			exit(0);
+
+		}
+		else{
+
+			printf("Command not found: ");
+			
+			i = 0;
+		
+			while(token_array[i] != NULL){
+				printf("%s ", token_array[i]);
+				i++;
+			}
+			printf("\n");
+
+		}
+
+	}
 }
