@@ -7,6 +7,7 @@
 char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
+void set_shell_path();
 
 int main(int argc, char* argv[]){
 
@@ -36,7 +37,7 @@ int main(int argc, char* argv[]){
 	char* user_input = NULL;
 	size_t size = 0;
 	
-	putenv("shell=OS-Shell/myshell");
+	set_shell_path();
 
 	while(1){
 
@@ -52,8 +53,7 @@ int main(int argc, char* argv[]){
 
 		}else{
 
-			char* prompt = getenv("shell");
-			printf("%s> ", prompt);
+			printf("myshell%s> ", getenv("PWD"));
 
 			getline(&user_input, &size, stdin);
 
@@ -108,24 +108,40 @@ void free_token_array(char** token_array){
 	free(token_array);
 }
 
+void set_shell_path(){
+
+	char cwd[100];
+
+	getcwd(cwd, 100);
+
+	char shell_name[9] = "/myshell";
+
+	strncat(cwd, shell_name, 9);
+
+	setenv("shell", cwd, 1); 
+}
+
 void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
 
-	int NOT_FOUND = 0;
-
 	while(token_array[i] != NULL){
 
-		if(strcmp(token_array[i], "exit") == 0 && token_array[i + 1] == NULL){
+		if(i == 0 && strcmp(token_array[i], "exit") == 0 && token_array[i + 1] == NULL){
 
 			free(user_input);
 			free(token_array);
 			exit(0);
 
 		}
-		else if(strcmp(token_array[i], "cd") == 0){
+		else if(i == 0 && strcmp(token_array[i], "cd") == 0){
 		
-			printf("cd entered\n");
+			command_cd(token_array[i + 1]);
+			
+		}
+		else{
+
+			
 
 		}
 
