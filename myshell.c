@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "myshell.h"
 
 char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
@@ -38,13 +39,17 @@ int main(int argc, char* argv[]){
 
 		if(bash_mode_on){
 
+			if(feof(bash_fp)){
+
+				printf("End of file!\n");
+				exit(0);
+			}
+	
 			getline(&user_input, &size, bash_fp);
 
 		}else{
 
-			char* prompt = getenv("PWD");
-
-			printf("%s />", prompt);
+			printf("myshell> ");
 
 			getline(&user_input, &size, stdin);
 
