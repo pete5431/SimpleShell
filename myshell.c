@@ -112,34 +112,23 @@ void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
 
-	if(token_array[0] != NULL){
+	int NOT_FOUND = 0;
 
-		if(strcmp(token_array[0], "cd") == 0){
+	while(token_array[i] != NULL){
 
-			printf("Ey cd\n");
-
-		}
-		else if(strcmp(user_input, "exit\n") == 0){
-
+		if(strcmp(token_array[i], "exit") == 0 && token_array[i + 1] == NULL){
 
 			free(user_input);
-			free_token_array(token_array);
+			free(token_array);
 			exit(0);
 
 		}
-		else{
-
-			printf("Command not found: ");
-			
-			i = 0;
+		else if(strcmp(token_array[i], "cd") == 0){
 		
-			while(token_array[i] != NULL){
-				printf("%s ", token_array[i]);
-				i++;
-			}
-			printf("\n");
+			printf("cd entered\n");
 
 		}
 
+		i++;
 	}
 }
