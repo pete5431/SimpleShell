@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include "myshell.h"
 
 void command_cd(char* directory_name){
@@ -28,3 +29,30 @@ void command_cd(char* directory_name){
 	}
 }
 
+void command_clr(){
+
+	printf("\033[H\033[J");
+
+}
+
+void command_external(char* command, char** argv){
+
+	int pid = fork();
+
+	if(pid == -1){
+		printf("Forking error.\n");
+	}			
+	else if(pid == 0){
+
+		if(execv(command, argv) < 0){
+			exit(0);
+		}	
+
+	}
+	else{
+
+		int status = 0;
+		wait(&status);
+		
+	}
+}
