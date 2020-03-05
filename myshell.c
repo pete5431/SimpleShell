@@ -4,10 +4,34 @@
 #include <string.h>
 #include "myshell.h"
 
+enum Command {
+
+	CD_COMMAND = 1,
+	DIR_COMMAND = 2,
+	CLR_COMMAND = 3,	
+	ECHO_COMMAND = 4,
+	ENVIRON_COMMAND = 5,
+	PAUSE_COMMAND = 6,
+	HELP_COMMAND = 7,
+	EXIT_COMMAND = 8
+};
+
+enum Operator {
+
+	REDIRECT_INPUT = 9,
+	REDIRECT_OUTPUT_TRUNC = 10,
+	REDIRECT_OUTPUT_APP = 11,
+	PIPE = 12,
+	BACKGROUND = 13
+};
+
+
 char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
 void set_shell_path();
+int is_built_in(char*);
+int is_operator(char*);
 
 int main(int argc, char* argv[]){
 
@@ -121,30 +145,140 @@ void set_shell_path(){
 	setenv("shell", cwd, 1); 
 }
 
+int is_built_in(char* token){
+
+	if(strcmp(token, "exit") == 0){
+
+		return EXIT_COMMAND;
+
+	}
+	else if(strcmp(token, "cd") == 0){
+
+		return CD_COMMAND;
+
+	}
+	else if(strcmp(token, "clr") == 0){
+
+		return CLR_COMMAND;
+	
+	}
+	else if(strcmp(token, "help") == 0){
+
+		return HELP_COMMAND;
+
+	}
+	else if(strcmp(token, "environ") == 0){
+
+		return ENVIRON_COMMAND;
+
+	}
+	else if(strcmp(token, "echo") == 0){
+		
+		return ECHO_COMMAND;
+
+	}
+	else if(strcmp(token, "dir") == 0){
+
+		return DIR_COMMAND;
+
+	}
+	else if(strcmp(token, "pause") == 0){
+
+		return PAUSE_COMMAND;
+
+	}
+	else return -1;
+}
+
+int is_operator(char* token){
+
+	if(strcmp(token, ">") == 0){
+
+		return REDIRECT_OUTPUT_TRUNC;
+
+	}
+	else if(strcmp(token, ">>") == 0){
+
+		return REDIRECT_OUTPUT_APP;
+	
+	}
+	else if(strcmp(token, "<") == 0){
+
+		return REDIRECT_INPUT;
+
+	}
+	else if(strcmp(token, "&") == 0){
+
+		return BACKGROUND;
+
+	}
+	else if(strcmp(token, "|") == 0){
+	
+		return PIPE;
+
+	}
+	else return -1;
+}
+
 void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
 
+	char* command = NULL;
+
+	char** arguments = NULL;
+
+	int look_for_arguments = 0;
+
+	int num_arguments = 0;
+
 	while(token_array[i] != NULL){
 
-		if(i == 0 && strcmp(token_array[i], "exit") == 0 && token_array[i + 1] == NULL){
+		if(is_built_in(token_array[i]) != -1 && !look_for_arguments){
+
+			command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
+			strncpy(command, token_array[i], strlen(token_array[i]) + 1);
+			look_for_arguments = 1;
+
+		}
+		else if(look_for_arguments){
+
+		  	arguments = malloc(num_arguments + 1 * sizeof(char*));
+			arguments[num_arguments] = token_array[i];
+			num_arguments++;	
+
+		}
+		i++;
+	}
+
+	if(command != NULL){
+
+		if(is_built_in(command) == CD_COMMAND){
+
+			if(num_arguments > 1){
+
+				printf("Too many arguments to cd.\n");
+			
+			}
+			else if(num_arguments == 1){
+
+				command_cd(arguments[0]);
+
+			}
+			else if(num_arguments == 0){
+
+				command_cd(NULL);
+			
+			}
+
+		}
+		else if(is_built_in(command) == EXIT_COMMAND){
 
 			free(user_input);
-			free(token_array);
+			free_token_array(token_array);
 			exit(0);
 
 		}
-		else if(i == 0 && strcmp(token_array[i], "cd") == 0){
-		
-			command_cd(token_array[i + 1]);
-			
-		}
-		else{
 
-			
-
-		}
-
-		i++;
 	}
 }
