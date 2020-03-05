@@ -5,6 +5,102 @@
 #include <sys/wait.h>
 #include "myshell.h"
 
+enum Command {
+
+        CD_COMMAND = 1,
+        DIR_COMMAND = 2,
+        CLR_COMMAND = 3,
+        ECHO_COMMAND = 4,
+        ENVIRON_COMMAND = 5,
+        PAUSE_COMMAND = 6,
+        HELP_COMMAND = 7,
+        EXIT_COMMAND = 8
+};
+
+enum Operator {
+
+        REDIRECT_INPUT = 9,
+        REDIRECT_OUTPUT_TRUNC = 10,
+        REDIRECT_OUTPUT_APP = 11,
+        PIPE = 12,
+        BACKGROUND = 13
+};
+
+int is_built_in(char* token){
+
+        if(strcmp(token, "exit") == 0){
+
+                return EXIT_COMMAND;
+
+        }
+        else if(strcmp(token, "cd") == 0){
+
+                return CD_COMMAND;
+
+        }
+        else if(strcmp(token, "clr") == 0){
+
+                return CLR_COMMAND;
+
+        }
+        else if(strcmp(token, "help") == 0){
+
+                return HELP_COMMAND;
+
+        }
+        else if(strcmp(token, "environ") == 0){
+
+                return ENVIRON_COMMAND;
+
+        }
+        else if(strcmp(token, "echo") == 0){
+
+                return ECHO_COMMAND;
+
+        }
+        else if(strcmp(token, "dir") == 0){
+
+                return DIR_COMMAND;
+
+        }
+        else if(strcmp(token, "pause") == 0){
+
+                return PAUSE_COMMAND;
+
+        }
+        else return -1;
+}
+
+int is_operator(char* token){
+
+        if(strcmp(token, ">") == 0){
+
+                return REDIRECT_OUTPUT_TRUNC;
+
+        }
+        else if(strcmp(token, ">>") == 0){
+
+                return REDIRECT_OUTPUT_APP;
+
+        }
+        else if(strcmp(token, "<") == 0){
+
+                return REDIRECT_INPUT;
+
+        }
+        else if(strcmp(token, "&") == 0){
+
+                return BACKGROUND;
+
+        }
+        else if(strcmp(token, "|") == 0){
+
+                return PIPE;
+
+        }
+        else return -1;
+}
+
 void command_cd(char* directory_name){
 
 	if(directory_name == NULL){
@@ -55,4 +151,27 @@ void command_external(char* command, char** argv){
 		wait(&status);
 		
 	}
+}
+
+void command_help(char* command){
+
+	int print_all = 0;
+
+	if(command == NULL){
+
+		print_all = 1;
+
+	}
+	
+	if(command != NULL){
+
+		if(is_built_in(command) == CD_COMMAND){
+
+			printf("Command cd: \n");
+			printf("cd accepts one or no arguments.\n");
+			printf("If no arguments, prints current directory.\n");
+			printf("If one arguments, changes to the given directory if valid.\n");
+
+		}
+	}	
 }

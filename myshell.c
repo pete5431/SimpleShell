@@ -30,8 +30,6 @@ char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
 void set_shell_path();
-int is_built_in(char*);
-int is_operator(char*);
 
 int main(int argc, char* argv[]){
 
@@ -145,81 +143,6 @@ void set_shell_path(){
 	setenv("shell", cwd, 1); 
 }
 
-int is_built_in(char* token){
-
-	if(strcmp(token, "exit") == 0){
-
-		return EXIT_COMMAND;
-
-	}
-	else if(strcmp(token, "cd") == 0){
-
-		return CD_COMMAND;
-
-	}
-	else if(strcmp(token, "clr") == 0){
-
-		return CLR_COMMAND;
-	
-	}
-	else if(strcmp(token, "help") == 0){
-
-		return HELP_COMMAND;
-
-	}
-	else if(strcmp(token, "environ") == 0){
-
-		return ENVIRON_COMMAND;
-
-	}
-	else if(strcmp(token, "echo") == 0){
-		
-		return ECHO_COMMAND;
-
-	}
-	else if(strcmp(token, "dir") == 0){
-
-		return DIR_COMMAND;
-
-	}
-	else if(strcmp(token, "pause") == 0){
-
-		return PAUSE_COMMAND;
-
-	}
-	else return -1;
-}
-
-int is_operator(char* token){
-
-	if(strcmp(token, ">") == 0){
-
-		return REDIRECT_OUTPUT_TRUNC;
-
-	}
-	else if(strcmp(token, ">>") == 0){
-
-		return REDIRECT_OUTPUT_APP;
-	
-	}
-	else if(strcmp(token, "<") == 0){
-
-		return REDIRECT_INPUT;
-
-	}
-	else if(strcmp(token, "&") == 0){
-
-		return BACKGROUND;
-
-	}
-	else if(strcmp(token, "|") == 0){
-	
-		return PIPE;
-
-	}
-	else return -1;
-}
-
 void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
@@ -272,13 +195,45 @@ void parse_input(char** token_array, char* user_input){
 			}
 
 		}
-		else if(is_built_in(command) == EXIT_COMMAND){
+		else if(is_built_in(command) == CLR_COMMAND){
+	
+			if(num_arguments == 0){
 
-			free(user_input);
-			free_token_array(token_array);
-			exit(0);
+				command_clr();
+
+			}
 
 		}
+		else if(is_built_in(command) == HELP_COMMAND){
 
+			if(num_arguments == 1){
+
+				command_help(arguments[0]);
+
+			}
+			else if(num_arguments == 0){
+
+				command_help(NULL);
+
+			}
+
+		}
+		else if(is_built_in(command) == EXIT_COMMAND){
+
+			if(num_arguments == 0){
+				
+				free(user_input);
+				free_token_array(token_array);
+				exit(0);
+
+			}
+		}
+
+	}
+	if(command != NULL){
+		free(command);
+	}
+	if(arguments != NULL){
+		free(arguments);
 	}
 }
