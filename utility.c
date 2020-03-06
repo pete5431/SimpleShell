@@ -106,8 +106,6 @@ int is_operator(char* token){
 
 int is_valid_external(char* command){
 
-	printf("The id of command before: %p\n", command);
-
 	if(command != NULL){
 
 		char bin[6] = "/bin/";
@@ -125,13 +123,9 @@ int is_valid_external(char* command){
 
 		if(access(bin_path, X_OK) != -1){
 
-			printf("%s\n", bin_path);
-
 			command = (char*) realloc(command, strlen(bin_path) + 1 * sizeof(char));
 
 			strncpy(command, bin_path, strlen(bin_path) + 1);
-
-			printf("New command id: %p\n", command);
 
 			free(bin_path);
 			free(user_bin_path);
@@ -141,14 +135,10 @@ int is_valid_external(char* command){
 		}
 		else if(access(user_bin_path, X_OK) != -1){
 
-			printf("%s\n", user_bin_path);
-
 			command = (char*) realloc(command, strlen(user_bin_path) + 1 * sizeof(char));
 
 			strncpy(command, user_bin_path, strlen(user_bin_path) + 1);
 
-			printf("New command id: %p\n", command);
-			
 			free(bin_path);
 			free(user_bin_path);			
 
@@ -157,7 +147,7 @@ int is_valid_external(char* command){
 		}
 		else{
 
-			printf("No accessable\n");
+			printf("Not accessable\n");
 			free(bin_path);
 			free(user_bin_path);
 			return -1;
@@ -254,4 +244,19 @@ void command_echo(char** arguments){
 	}
 
 	printf("\n");
+}
+
+void command_environ(){
+
+	printf("USER=%s\n", getenv("USER"));
+	printf("PATH=%s\n", getenv("PATH"));
+	printf("PWD=%s\n", getenv("PWD"));
+}
+
+void command_pause(){
+
+	fflush(stdin);
+	while(getchar() != '\n'){
+		
+	}
 }

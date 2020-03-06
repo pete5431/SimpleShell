@@ -66,13 +66,13 @@ int main(int argc, char* argv[]){
 
 		if(bash_mode_on){
 
-			if(feof(bash_fp)){
+			getline(&user_input, &size, bash_fp);
 
-				printf("End of file!\n");
+			if(feof(bash_fp)){
 				exit(0);
 			}
-	
-			getline(&user_input, &size, bash_fp);
+
+			printf("read from file: %s\n", user_input);
 
 		}else{
 
@@ -195,8 +195,6 @@ void parse_input(char** token_array, char* user_input){
 
 				if(is_valid_external(token_array[i]) != -1){
 
-					printf("After call: %p\n", token_array[i]);
-					printf("After call: %s\n", token_array[i]);
                                 	look_for_arguments = 1;
 
 					command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
@@ -209,7 +207,12 @@ void parse_input(char** token_array, char* user_input){
 				}
 				else{
 
-					break;
+					command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
+                                        strncpy(command, token_array[i], strlen(token_array[i]) + 1);
+
+                                        arguments = add_argument(arguments, token_array[i], num_arguments);
+
+                                        num_arguments++;
 				}
 
 			}
@@ -297,6 +300,19 @@ void parse_input(char** token_array, char* user_input){
 			else command_echo(arguments);
 
 		}
+		else if(is_built_in(command) == ENVIRON_COMMAND){
+
+			if(num_arguments == 0){
+				command_environ();
+			}
+
+		}
+		else if(is_built_in(command) == PAUSE_COMMAND){
+
+			if(num_arguments == 0){
+				command_pause();
+			}			
+		}
 		else if(is_built_in(command) == EXIT_COMMAND){
 
 			if(num_arguments == 0){
@@ -309,14 +325,11 @@ void parse_input(char** token_array, char* user_input){
 		}
 		else{
 
-			printf("got here\n");
-
 			command_external(command, arguments);
 
 		}
 	}
-	if(command != NULL){
-		free(command);
-	}
+
+	free(command);
 	free(arguments);
 }
