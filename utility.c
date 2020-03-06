@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "myshell.h"
 
 enum Command {
@@ -99,6 +102,69 @@ int is_operator(char* token){
 
         }
         else return -1;
+}
+
+int is_valid_external(char* command){
+
+	printf("The id of command before: %p\n", command);
+
+	if(command != NULL){
+
+		char bin[6] = "/bin/";
+
+		char user_bin[11] = "/usr/bin/";
+
+		char* bin_path = malloc(strlen(command) + 7 * sizeof(char));
+		char* user_bin_path = malloc(strlen(command) + 12 * sizeof(char));
+
+		strncpy(bin_path, bin, 5);
+		strncpy(user_bin_path, user_bin, 10);
+
+		strncat(bin_path, command, strlen(command) + 1);
+		strncat(user_bin_path, command, strlen(command) + 1);
+
+		if(access(bin_path, X_OK) != -1){
+
+			printf("%s\n", bin_path);
+
+			command = (char*) realloc(command, strlen(bin_path) + 1 * sizeof(char));
+
+			strncpy(command, bin_path, strlen(bin_path) + 1);
+
+			printf("New command id: %p\n", command);
+
+			free(bin_path);
+			free(user_bin_path);
+
+			return 1;
+
+		}
+		else if(access(user_bin_path, X_OK) != -1){
+
+			printf("%s\n", user_bin_path);
+
+			command = (char*) realloc(command, strlen(user_bin_path) + 1 * sizeof(char));
+
+			strncpy(command, user_bin_path, strlen(user_bin_path) + 1);
+
+			printf("New command id: %p\n", command);
+			
+			free(bin_path);
+			free(user_bin_path);			
+
+			return 1;
+			
+		}
+		else{
+			printf("No accessable\n");
+			free(bin_path);
+			free(user_bin_path);
+			return -1;
+
+		}
+
+	}
+	return -1;
 }
 
 void command_cd(char* directory_name){
