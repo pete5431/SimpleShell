@@ -262,21 +262,38 @@ void command_pause(){
 	}
 }
 
-void command_dir(char* directory_name, int REDIRECT_OUTPUT){
+void command_dir(char** arguments, int REDIRECT_OUTPUT){
 
 	DIR* dir;
 
 	struct dirent *d;
 
-	dir = opendir(directory_name);
+	int i = 0;
+	
+	while(arguments[i] != NULL){
 
-	while((d = readdir(dir)) != NULL){
+		dir = opendir(arguments[i]);
 
-		if(strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0){
+		if(dir == NULL){
+
+			printf("Error: %s not found.\n", arguments[i]);
+			break;
 
 		}
-		else printf("%s\n", d->d_name);
 
+		printf("%s:\n", arguments[i]);
+
+		while((d = readdir(dir)) != NULL){
+
+			if(strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0){
+
+			}	
+			else printf("%s\n", d->d_name);
+
+		}
+	
+		printf("\n");
+	
+		i++;
 	}
-
 }

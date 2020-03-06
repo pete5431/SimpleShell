@@ -31,6 +31,7 @@ void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
 void set_shell_path();
 char** add_argument(char**, char*, int);
+void execute_command(char*, char**, int, int);
 
 int main(int argc, char* argv[]){
 
@@ -180,6 +181,10 @@ void parse_input(char** token_array, char* user_input){
 
 	int operator_detected = 0;
 
+	int error_call = 0;
+
+	int state = -1;
+
 	while(token_array[i] != NULL){
 
 		if(!look_for_arguments){
@@ -232,14 +237,20 @@ void parse_input(char** token_array, char* user_input){
 				if(is_operator(token_array[i]) == REDIRECT_OUTPUT_TRUNC && !operator_detected){
 
 					operator_detected = 1;
+					state = REDIRECT_OUTPUT_TRUNC;
 					if(token_array[i + 1] != NULL){
 						arguments = add_argument(arguments, token_array[i + 1], num_arguments);
 						num_arguments++;
 						i++;
 					}
+					else{
 
-				} 	
+						 error_call = 1;
+						 printf("No output destination for >.\n");
 
+					}
+				}
+				 	
 			}
 		}
 		i++;
@@ -249,93 +260,101 @@ void parse_input(char** token_array, char* user_input){
 
 	if(command != NULL){
 
-		if(is_built_in(command) == CD_COMMAND){
-
-			if(num_arguments > 1){
-
-				printf("Too many arguments to cd.\n");
-			
-			}
-			else if(num_arguments == 1){
-
-				command_cd(arguments[0]);
-
-			}
-			else if(num_arguments == 0){
-
-				command_cd(NULL);
-			
-			}
-
+		if(is_built_in(command) == EXIT_COMMAND && num_arguments == 0){
+			free(user_input);
+			free(token_array);
+			exit(0);
 		}
-		else if(is_built_in(command) == CLR_COMMAND){
-	
-			if(num_arguments == 0){
 
-				command_clr();
+	}
 
-			}
-
-		}
-		else if(is_built_in(command) == HELP_COMMAND){
-
-			if(num_arguments == 1){
-
-				command_help(arguments[0]);
-
-			}
-			else if(num_arguments == 0){
-
-				command_help(NULL);
-
-			}
-
-		}
-		else if(is_built_in(command) == ECHO_COMMAND){
-
-			if(num_arguments == 0){
-
-				printf("\n");
-			}
-			else command_echo(arguments);
-
-		}
-		else if(is_built_in(command) == ENVIRON_COMMAND){
-
-			if(num_arguments == 0){
-				command_environ();
-			}
-
-		}
-		else if(is_built_in(command) == PAUSE_COMMAND){
-
-			if(num_arguments == 0){
-				command_pause();
-			}			
-		}
-		else if(is_built_in(command) == DIR_COMMAND){
-
-			if(num_arguments == 1){
-				command_dir(arguments[0], -1);
-			}
-		}
-		else if(is_built_in(command) == EXIT_COMMAND){
-
-			if(num_arguments == 0){
-				
-				free(user_input);
-				free_token_array(token_array);
-				exit(0);
-
-			}
-		}
-		else{
-
-			command_external(command, arguments);
-
-		}
+	if(!error_call){
+		execute_command(command, arguments, num_arguments, state);
 	}
 
 	free(command);
 	free(arguments);
+}
+
+void execute_command(char* command, char** arguments, int num_arguments, int state){
+
+	if(command != NULL){
+
+                if(is_built_in(command) == CD_COMMAND){
+
+                        if(num_arguments > 1){
+
+                                printf("Too many arguments to cd.\n");
+
+                        }
+                        else if(num_arguments == 1){
+
+                                command_cd(arguments[0]);
+
+                        }
+                        else if(num_arguments == 0){
+
+                                command_cd(NULL);
+
+                        }
+
+                }
+                else if(is_built_in(command) == CLR_COMMAND){
+
+                        if(num_arguments == 0){
+
+                                command_clr();
+
+                        }
+
+                }
+                else if(is_built_in(command) == HELP_COMMAND){
+
+                        if(num_arguments == 1){
+
+                                command_help(arguments[0]);
+
+                        }
+                        else if(num_arguments == 0){
+
+                                command_help(NULL);
+
+                        }
+
+                }
+		else if(is_built_in(command) == ECHO_COMMAND){
+
+                        if(num_arguments == 0){
+
+                                printf("\n");
+                        }
+                        else command_echo(arguments);
+
+                }
+                else if(is_built_in(command) == ENVIRON_COMMAND){
+
+                        if(num_arguments == 0){
+                                command_environ();
+                        }
+
+                }
+                else if(is_built_in(command) == PAUSE_COMMAND){
+
+                        if(num_arguments == 0){
+                                command_pause();
+                        }
+                }
+                else if(is_built_in(command) == DIR_COMMAND){
+
+                        if(num_arguments != 0){
+				command_dir(arguments, state);
+			}
+                }
+                else{
+
+                        command_external(command, arguments);
+
+                }
+        }
+
 }
