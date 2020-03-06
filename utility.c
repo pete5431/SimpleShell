@@ -107,6 +107,8 @@ int is_operator(char* token){
 
 int is_valid_external(char* command){
 
+	int valid = -1;
+
 	if(command != NULL){
 
 		char bin[6] = "/bin/";
@@ -128,10 +130,7 @@ int is_valid_external(char* command){
 
 			strncpy(command, bin_path, strlen(bin_path) + 1);
 
-			free(bin_path);
-			free(user_bin_path);
-
-			return 1;
+			valid = 1;
 
 		}
 		else if(access(user_bin_path, X_OK) != -1){
@@ -140,21 +139,17 @@ int is_valid_external(char* command){
 
 			strncpy(command, user_bin_path, strlen(user_bin_path) + 1);
 
-			free(bin_path);
-			free(user_bin_path);			
-
-			return 1;
+			valid = 1;
 			
 		}
-		else{
+		else if(access(command, X_OK) != -1){
 
-			printf("Not accessable\n");
-			free(bin_path);
-			free(user_bin_path);
-			return -1;
+			valid = 1;
 
 		}
-
+		free(bin_path);
+		free(user_bin_path);
+		return valid;
 	}
 	return -1;
 }
@@ -234,9 +229,11 @@ void command_help(char* command){
 	}	
 }
 
-void command_echo(char** arguments){
+void command_echo(char** arguments, char* out_filename, int state){
 
 	int i = 0;
+
+	
 
 	while(arguments[i] != NULL){
 
@@ -262,14 +259,34 @@ void command_pause(){
 	}
 }
 
-void command_dir(char** arguments, int REDIRECT_OUTPUT){
+void command_dir(char** arguments, char* out_filename, int state){
 
 	DIR* dir;
 
 	struct dirent *d;
 
 	int i = 0;
-	
+
+	FILE* out_fp = NULL;
+
+	int original_stdout = dup(1);
+
+	if(state != -1){
+
+		if(state == REDIRECT_OUTPUT_TRUNC){
+			out_fp = fopen(out_filename, "w");
+		}
+		else if(state == REDIRECT_OUTPUT_APP){
+			out_fp = fopen(out_filename, "a+");
+		}
+
+		if(out_fp == NULL){
+			printf("Error: file not found.\n");
+			return;
+		}
+		dup2(fileno(out_fp), 1);
+	}
+
 	while(arguments[i] != NULL){
 
 		dir = opendir(arguments[i]);
@@ -277,6 +294,7 @@ void command_dir(char** arguments, int REDIRECT_OUTPUT){
 		if(dir == NULL){
 
 			printf("Error: %s not found.\n", arguments[i]);
+
 			break;
 
 		}
@@ -289,11 +307,14 @@ void command_dir(char** arguments, int REDIRECT_OUTPUT){
 
 			}	
 			else printf("%s\n", d->d_name);
-
 		}
 	
 		printf("\n");
 	
 		i++;
 	}
+	if(out_fp != NULL){
+		fclose(out_fp);
+	}
+	dup2(original_stdout, 1);
 }

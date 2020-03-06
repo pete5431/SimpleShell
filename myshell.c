@@ -21,8 +21,10 @@ enum Operator {
 	REDIRECT_INPUT = 9,
 	REDIRECT_OUTPUT_TRUNC = 10,
 	REDIRECT_OUTPUT_APP = 11,
-	PIPE = 12,
-	BACKGROUND = 13
+	BOTH_IN_OUT_TRUNC = 12,
+	BOTH_IN_OUT_APP = 13,
+	PIPE = 14,
+	BACKGROUND = 15
 };
 
 
@@ -31,7 +33,7 @@ void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
 void set_shell_path();
 char** add_argument(char**, char*, int);
-void execute_command(char*, char**, int, int);
+void execute_command(char*, char**, char*, char*, int, int);
 
 int main(int argc, char* argv[]){
 
@@ -72,8 +74,6 @@ int main(int argc, char* argv[]){
 			if(feof(bash_fp)){
 				exit(0);
 			}
-
-			printf("read from file: %s\n", user_input);
 
 		}else{
 
@@ -175,11 +175,13 @@ void parse_input(char** token_array, char* user_input){
 
 	char** arguments = NULL;
 
+	char* out_filename = NULL;
+
+	char* in_filename = NULL;
+
 	int look_for_arguments = 0;
 
 	int num_arguments = 0;
-
-	int operator_detected = 0;
 
 	int error_call = 0;
 
@@ -212,12 +214,10 @@ void parse_input(char** token_array, char* user_input){
 				}
 				else{
 
-					command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
-                                        strncpy(command, token_array[i], strlen(token_array[i]) + 1);
+					printf("%s not valid command/\n", token_array[i]);
+					error_call = 1;
+					break;
 
-                                        arguments = add_argument(arguments, token_array[i], num_arguments);
-
-                                        num_arguments++;
 				}
 
 			}
@@ -234,23 +234,22 @@ void parse_input(char** token_array, char* user_input){
 			}
 			else{
 
-				if(is_operator(token_array[i]) == REDIRECT_OUTPUT_TRUNC && !operator_detected){
+				if(is_operator(token_array[i]) == REDIRECT_OUTPUT_TRUNC){
 
-					operator_detected = 1;
 					state = REDIRECT_OUTPUT_TRUNC;
-					if(token_array[i + 1] != NULL){
-						arguments = add_argument(arguments, token_array[i + 1], num_arguments);
-						num_arguments++;
-						i++;
-					}
-					else{
-
-						 error_call = 1;
-						 printf("No output destination for >.\n");
-
-					}
 				}
-				 	
+				else if(is_operator(token_array[i]) == REDIRECT_OUTPUT_APP){
+					
+					state = REDIRECT_OUTPUT_APP;
+				}	
+				if(token_array[i + 1] != NULL){
+					out_filename = token_array[i + 1];
+					i++;
+				}
+				else {
+					printf("No argument after operator.\n");
+					break;
+				}
 			}
 		}
 		i++;
@@ -269,14 +268,14 @@ void parse_input(char** token_array, char* user_input){
 	}
 
 	if(!error_call){
-		execute_command(command, arguments, num_arguments, state);
+		execute_command(command, arguments, out_filename, in_filename, num_arguments, state);
 	}
 
 	free(command);
 	free(arguments);
 }
 
-void execute_command(char* command, char** arguments, int num_arguments, int state){
+void execute_command(char* command, char** arguments, char* out_filename, char* in_filename, int num_arguments, int state){
 
 	if(command != NULL){
 
@@ -328,7 +327,7 @@ void execute_command(char* command, char** arguments, int num_arguments, int sta
 
                                 printf("\n");
                         }
-                        else command_echo(arguments);
+                        else command_echo(arguments, out_filename, state);
 
                 }
                 else if(is_built_in(command) == ENVIRON_COMMAND){
@@ -347,7 +346,7 @@ void execute_command(char* command, char** arguments, int num_arguments, int sta
                 else if(is_built_in(command) == DIR_COMMAND){
 
                         if(num_arguments != 0){
-				command_dir(arguments, state);
+				command_dir(arguments, out_filename, state);
 			}
                 }
                 else{
