@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "myshell.h"
 
 enum Command {
@@ -259,4 +260,23 @@ void command_pause(){
 	while(getchar() != '\n'){
 		
 	}
+}
+
+void command_dir(char* directory_name, int REDIRECT_OUTPUT){
+
+	DIR* dir;
+
+	struct dirent *d;
+
+	dir = opendir(directory_name);
+
+	while((d = readdir(dir)) != NULL){
+
+		if(strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0){
+
+		}
+		else printf("%s\n", d->d_name);
+
+	}
+
 }

@@ -8,6 +8,7 @@ void command_help(char*);
 void command_echo(char**);
 void command_environ();
 void command_pause();
+void command_dir(char*, int);
 int is_built_in(char*);
 int is_operator(char*);
 int is_valid_external(char*);

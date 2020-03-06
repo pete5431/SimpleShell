@@ -313,6 +313,12 @@ void parse_input(char** token_array, char* user_input){
 				command_pause();
 			}			
 		}
+		else if(is_built_in(command) == DIR_COMMAND){
+
+			if(num_arguments == 1){
+				command_dir(arguments[0], -1);
+			}
+		}
 		else if(is_built_in(command) == EXIT_COMMAND){
 
 			if(num_arguments == 0){
