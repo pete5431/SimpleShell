@@ -30,7 +30,7 @@ char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
 void set_shell_path();
-void add_arguments(char**, char*, int);
+char** add_argument(char**, char*, int);
 
 int main(int argc, char* argv[]){
 
@@ -144,9 +144,9 @@ void set_shell_path(){
 	setenv("shell", cwd, 1); 
 }
 
-void add_arguments(char** arguments, char* add_on, int num_arguments){
+char** add_argument(char** arguments, char* add_on, int num_arguments){
 
-	char** new_arguments = realloc(arguments, (num_arguments + 2) * sizeof(char*));
+	char** new_arguments = realloc(arguments, (num_arguments + 1) * sizeof(char*));
 
         if(new_arguments == NULL){
 
@@ -159,10 +159,11 @@ void add_arguments(char** arguments, char* add_on, int num_arguments){
 	}
 	else arguments = new_arguments;
 
-	printf("Function id: %p\n", arguments);
-
 	arguments[num_arguments] = add_on;
-	arguments[num_arguments + 1] = NULL;
+
+	//printf("Added arg: %s at index %d, id: %p\n", arguments[num_arguments], num_arguments, arguments[num_arguments]);
+
+	return arguments;
 }
 
 void parse_input(char** token_array, char* user_input){
@@ -171,7 +172,7 @@ void parse_input(char** token_array, char* user_input){
 
 	char* command = NULL;
 
-	char** arguments = malloc(sizeof(char*));
+	char** arguments = NULL;
 
 	int look_for_arguments = 0;
 
@@ -201,14 +202,13 @@ void parse_input(char** token_array, char* user_input){
 					command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
 					strncpy(command, token_array[i], strlen(token_array[i]) + 1);
 				
-					add_arguments(arguments, token_array[i], num_arguments);
+					arguments = add_argument(arguments, token_array[i], num_arguments);
 
                                 	num_arguments++;
 
 				}
 				else{
 
-					printf("Error: %s not a command.\n", token_array[i]);
 					break;
 				}
 
@@ -219,12 +219,8 @@ void parse_input(char** token_array, char* user_input){
 
 			if(is_operator(token_array[i]) == -1){
 
-				printf("Current argument id: %p\n", arguments);
-
-				add_arguments(arguments, token_array[i], num_arguments);
-		
-				printf("After argument id: %p\n", arguments);
-
+				arguments = add_argument(arguments, token_array[i], num_arguments);
+	
 				num_arguments++;
 
 			}
@@ -234,7 +230,7 @@ void parse_input(char** token_array, char* user_input){
 
 					operator_detected = 1;
 					if(token_array[i + 1] != NULL){
-						add_arguments(arguments, token_array[i + 1], num_arguments);
+						arguments = add_argument(arguments, token_array[i + 1], num_arguments);
 						num_arguments++;
 						i++;
 					}
@@ -245,6 +241,8 @@ void parse_input(char** token_array, char* user_input){
 		}
 		i++;
 	}
+
+	arguments = add_argument(arguments, NULL, num_arguments);
 
 	if(command != NULL){
 
@@ -290,6 +288,15 @@ void parse_input(char** token_array, char* user_input){
 			}
 
 		}
+		else if(is_built_in(command) == ECHO_COMMAND){
+
+			if(num_arguments == 0){
+
+				printf("\n");
+			}
+			else command_echo(arguments);
+
+		}
 		else if(is_built_in(command) == EXIT_COMMAND){
 
 			if(num_arguments == 0){
@@ -302,6 +309,8 @@ void parse_input(char** token_array, char* user_input){
 		}
 		else{
 
+			printf("got here\n");
+
 			command_external(command, arguments);
 
 		}
@@ -309,7 +318,5 @@ void parse_input(char** token_array, char* user_input){
 	if(command != NULL){
 		free(command);
 	}
-	if(arguments != NULL){
-		free(arguments);
-	}
+	free(arguments);
 }

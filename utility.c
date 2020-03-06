@@ -156,6 +156,7 @@ int is_valid_external(char* command){
 			
 		}
 		else{
+
 			printf("No accessable\n");
 			free(bin_path);
 			free(user_bin_path);
@@ -240,4 +241,17 @@ void command_help(char* command){
 
 		}
 	}	
+}
+
+void command_echo(char** arguments){
+
+	int i = 0;
+
+	while(arguments[i] != NULL){
+
+		printf("%s ", arguments[i]);
+		i++;
+	}
+
+	printf("\n");
 }
