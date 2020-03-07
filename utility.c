@@ -167,11 +167,11 @@ void command_cd(char* directory_name){
 
 		if(chdir(directory_name) == 0){
 	
-			char cwd[100];
-
-			getcwd(cwd,100);
+			char* cwd = getcwd(NULL, 0);
 
 			setenv("PWD", cwd, 1);	
+
+			free(cwd);
 		}
 		else{
 			printf("Error: directory not found\n");
@@ -186,7 +186,7 @@ void command_clr(){
 
 }
 
-void command_external(char* command, char** argv, char* out_filename, char* in_filename, int state){
+void command_external(char** argv, char* out_filename, char* in_filename, int state){
 
 	int original_stdin = dup(0);
 	int original_stdout = dup(1);	
@@ -219,7 +219,7 @@ void command_external(char* command, char** argv, char* out_filename, char* in_f
 	}			
 	else if(pid == 0){
 
-		if(execv(command, argv) < 0){
+		if(execv(argv[0], argv) < 0){
 			exit(0);
 		}	
 

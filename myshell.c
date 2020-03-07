@@ -4,6 +4,7 @@
 #include <string.h>
 #include "myshell.h"
 
+// enums for the built-in commands.
 enum Command {
 
 	CD_COMMAND = 1,
@@ -16,6 +17,7 @@ enum Command {
 	EXIT_COMMAND = 8
 };
 
+// enums for the operators.
 enum Operator {
 
 	REDIRECT_INPUT = 9,
@@ -27,13 +29,13 @@ enum Operator {
 	BACKGROUND = 15
 };
 
-
 char** tokenize(char* input, char* delimiter);
 void free_token_array(char** token_array);
 void parse_input(char** token_array, char* user_input);
-void set_shell_path();
 char** add_argument(char**, char*, int);
-void execute_command(char*, char**, char*, char*, int, int);
+void execute_built_in(char*, char**, char*, int, int);
+
+void set_shell_path();
 
 int main(int argc, char* argv[]){
 
@@ -62,8 +64,6 @@ int main(int argc, char* argv[]){
 
 	char* user_input = NULL;
 	size_t size = 0;
-	
-	set_shell_path();
 
 	while(1){
 
@@ -72,6 +72,7 @@ int main(int argc, char* argv[]){
 			getline(&user_input, &size, bash_fp);
 
 			if(feof(bash_fp)){
+				fclose(bash_fp);
 				exit(0);
 			}
 
@@ -96,9 +97,19 @@ char** tokenize(char* user_input, char* delimiter){
 
 	char* user_copy = calloc(strlen(user_input) + 1, sizeof(char));
 
+	if(user_copy == NULL){
+		printf("Memory Allocation Failed.\n");
+		return NULL;
+	}
+
 	strncpy(user_copy, user_input, strlen(user_input) + 1);
 
 	char** token_array = (char**)malloc(sizeof(char*));
+
+	if(token_array == NULL){
+		printf("Memory Allocation Failed.\n");
+		return NULL;
+	}
 
 	char* token = strtok(user_copy, delimiter);
 
@@ -107,11 +118,22 @@ char** tokenize(char* user_input, char* delimiter){
 	while(token != NULL){
 	
 		char* token_copy = malloc((strlen(token) + 1) * sizeof(char));	
+		if(token_copy == NULL){
+			printf("Memory Allocation Failed.\n");
+			return NULL;
+		}
 		strncpy(token_copy, token, strlen(token) + 1);
 		token_array[i] = token_copy;
 		token = strtok(NULL, delimiter);
 		i++;
-		token_array = realloc(token_array, (i + 1) * sizeof(char*));
+
+		char** new_token_array = realloc(token_array, (i + 1) * sizeof(char*));
+		
+		if(new_token_array == NULL){
+			printf("Memory Allocation Failed.\n");
+			return NULL;
+		}else token_array = new_token_array;
+
 	}
 
 	token_array[i] = NULL;
@@ -147,7 +169,7 @@ void set_shell_path(){
 
 char** add_argument(char** arguments, char* add_on, int num_arguments){
 
-	char** new_arguments = realloc(arguments, (num_arguments + 1) * sizeof(char*));
+	char** new_arguments = realloc(arguments, (num_arguments + 2) * sizeof(char*));
 
         if(new_arguments == NULL){
 
@@ -162,7 +184,7 @@ char** add_argument(char** arguments, char* add_on, int num_arguments){
 
 	arguments[num_arguments] = add_on;
 
-	//printf("Added arg: %s at index %d, id: %p\n", arguments[num_arguments], num_arguments, arguments[num_arguments]);
+	arguments[num_arguments + 1] = NULL;
 
 	return arguments;
 }
@@ -171,7 +193,7 @@ void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
 
-	char* command = NULL;
+	char* built_in_command = NULL;
 
 	char** arguments = NULL;
 
@@ -191,8 +213,7 @@ void parse_input(char** token_array, char* user_input){
 
 			if(is_built_in(token_array[i]) != -1){
 
-				command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
-                        	strncpy(command, token_array[i], strlen(token_array[i]) + 1);
+				built_in_command = token_array[i];
                         	look_for_arguments = 1;
 
 			}
@@ -201,9 +222,6 @@ void parse_input(char** token_array, char* user_input){
 				if(is_valid_external(token_array[i]) != -1){
 
                                 	look_for_arguments = 1;
-
-					command = malloc((strlen(token_array[i]) + 1) * sizeof(char));
-					strncpy(command, token_array[i], strlen(token_array[i]) + 1);
 				
 					arguments = add_argument(arguments, token_array[i], num_arguments);
 
@@ -213,8 +231,7 @@ void parse_input(char** token_array, char* user_input){
 				else{
 
 					printf("%s not valid command.\n", token_array[i]);
-					error_call = 1;
-					break;
+					return;
 
 				}
 
@@ -223,7 +240,11 @@ void parse_input(char** token_array, char* user_input){
 		}
 		else if(look_for_arguments){
 
-			if(is_operator(token_array[i]) == -1){
+			int operator_identity = -1;
+		
+			operator_identity = is_operator(token_array[i]);
+
+			if(operator_identity == -1){
 
 				arguments = add_argument(arguments, token_array[i], num_arguments);
 	
@@ -232,9 +253,7 @@ void parse_input(char** token_array, char* user_input){
 			}
 			else{
 
-				int operator_identity = -1;
-
-				if((operator_identity = is_operator(token_array[i])) != -1 && token_array[i + 1] != NULL){
+				if(token_array[i + 1] != NULL){
 
 					if(operator_identity == REDIRECT_OUTPUT_TRUNC){
 
@@ -270,15 +289,15 @@ void parse_input(char** token_array, char* user_input){
 					}
 					i++;
 				}
-				else if(is_operator(token_array[i]) == BACKGROUND){
+				else if(operator_identity == BACKGROUND){
 				
-					state = BACKGROUND;	
-	
-				}
-				else if(is_operator(token_array[i]) == PIPE){
-
-					state = PIPE;
-
+					state = BACKGROUND;
+					command_external(arguments, in_filename, out_filename, state);
+					look_for_arguments = 0;
+					num_arguments = 0;
+					free(arguments);
+					state = -1;
+					arguments = NULL;
 				}
 				else{	
 					printf("No arguments after operator.\n");
@@ -290,27 +309,22 @@ void parse_input(char** token_array, char* user_input){
 		i++;
 	}
 
-	arguments = add_argument(arguments, NULL, num_arguments);
+	if(built_in_command != NULL){
 
-	if(command != NULL){
-
-		if(is_built_in(command) == EXIT_COMMAND && num_arguments == 0){
+		if(is_built_in(built_in_command) == EXIT_COMMAND && num_arguments == 0){
 			free(user_input);
 			free(token_array);
 			exit(0);
 		}
+		else execute_built_in(built_in_command, arguments, out_filename, num_arguments, state);
 
 	}
+	else command_external(arguments, out_filename, in_filename, state);
 
-	if(!error_call){
-		execute_command(command, arguments, out_filename, in_filename, num_arguments, state);
-	}
-
-	free(command);
 	free(arguments);
 }
 
-void execute_command(char* command, char** arguments, char* out_filename, char* in_filename, int num_arguments, int state){
+void execute_built_in(char* command, char** arguments, char* out_filename, int num_arguments, int state){
 
 	if(command != NULL){
 
@@ -379,16 +393,19 @@ void execute_command(char* command, char** arguments, char* out_filename, char* 
                         }
                 }
                 else if(is_built_in(command) == DIR_COMMAND){
+			
+			if(num_arguments == 0){
+				char* cwd = getcwd(NULL, 0);
 
-                        if(num_arguments != 0){
+				arguments = add_argument(arguments, cwd, num_arguments);
+
+				command_dir(arguments, out_filename, state);
+
+				free(cwd);
+			}
+                        else{
 				command_dir(arguments, out_filename, state);
 			}
                 }
-                else{
-
-                        command_external(command, arguments, out_filename, in_filename, state);
-
-                }
         }
-
 }
