@@ -26,8 +26,10 @@ enum Operator {
         REDIRECT_INPUT = 9,
         REDIRECT_OUTPUT_TRUNC = 10,
         REDIRECT_OUTPUT_APP = 11,
-        PIPE = 12,
-        BACKGROUND = 13
+	BOTH_IN_OUT_TRUNC = 12,
+	BOTH_IN_OUT_APP = 13,
+        PIPE = 14,
+        BACKGROUND = 15
 };
 
 int is_built_in(char* token){
@@ -184,7 +186,31 @@ void command_clr(){
 
 }
 
-void command_external(char* command, char** argv){
+void command_external(char* command, char** argv, char* out_filename, char* in_filename, int state){
+
+	int original_stdin = dup(0);
+	int original_stdout = dup(1);	
+
+	if(state != -1){
+
+		if(state == REDIRECT_OUTPUT_TRUNC || state == BOTH_IN_OUT_TRUNC){
+			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
+			dup2(out_file, 1);
+			close(out_file);
+		}
+		
+		if(state == REDIRECT_OUTPUT_APP || state == BOTH_IN_OUT_APP){
+			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);
+                        dup2(out_file, 1);
+                        close(out_file);
+		}
+
+		if(state == REDIRECT_INPUT || state == BOTH_IN_OUT_APP || state == BOTH_IN_OUT_TRUNC){
+			int in_file = open(in_filename, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);
+			dup2(in_file, 0);
+			close(in_file);
+		}
+	}
 
 	int pid = fork();
 
@@ -200,10 +226,13 @@ void command_external(char* command, char** argv){
 	}
 	else{
 
-		int status = 0;
-		wait(&status);
-		
+		if(state != BACKGROUND){
+			int status = 0;
+			wait(&status);
+		}
 	}
+	dup2(original_stdin, 0);
+	dup2(original_stdout, 1);
 }
 
 void command_help(char* command){
@@ -233,7 +262,25 @@ void command_echo(char** arguments, char* out_filename, int state){
 
 	int i = 0;
 
-	
+        FILE* out_fp = NULL;
+
+        int original_stdout = dup(1);	
+
+	if(state != -1){
+
+                if(state == REDIRECT_OUTPUT_TRUNC){
+                        out_fp = fopen(out_filename, "w");
+                }
+                else if(state == REDIRECT_OUTPUT_APP){
+                        out_fp = fopen(out_filename, "a+");
+                }
+
+                if(out_fp == NULL){
+                        printf("Error: file not found.\n");
+                        return;
+                }
+                dup2(fileno(out_fp), 1);
+        }
 
 	while(arguments[i] != NULL){
 
@@ -242,6 +289,11 @@ void command_echo(char** arguments, char* out_filename, int state){
 	}
 
 	printf("\n");
+
+	if(out_fp != NULL){
+		fclose(out_fp);	
+	}
+	dup2(original_stdout, 1);
 }
 
 void command_environ(){

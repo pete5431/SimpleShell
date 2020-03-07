@@ -3,7 +3,7 @@
 
 void command_cd(char*);
 void command_clr();
-void command_external(char*, char**);
+void command_external(char*, char**, char*, char*, int);
 void command_help(char*);
 void command_echo(char**, char*, int);
 void command_environ();

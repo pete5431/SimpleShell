@@ -179,9 +179,7 @@ void parse_input(char** token_array, char* user_input){
 
 	char* in_filename = NULL;
 
-	int look_for_arguments = 0;
-
-	int num_arguments = 0;
+	int look_for_arguments = 0, num_arguments = 0;
 
 	int error_call = 0;
 
@@ -214,7 +212,7 @@ void parse_input(char** token_array, char* user_input){
 				}
 				else{
 
-					printf("%s not valid command/\n", token_array[i]);
+					printf("%s not valid command.\n", token_array[i]);
 					error_call = 1;
 					break;
 
@@ -234,23 +232,60 @@ void parse_input(char** token_array, char* user_input){
 			}
 			else{
 
-				if(is_operator(token_array[i]) == REDIRECT_OUTPUT_TRUNC){
+				int operator_identity = -1;
 
-					state = REDIRECT_OUTPUT_TRUNC;
-				}
-				else if(is_operator(token_array[i]) == REDIRECT_OUTPUT_APP){
-					
-					state = REDIRECT_OUTPUT_APP;
-				}	
-				if(token_array[i + 1] != NULL){
-					out_filename = token_array[i + 1];
+				if((operator_identity = is_operator(token_array[i])) != -1 && token_array[i + 1] != NULL){
+
+					if(operator_identity == REDIRECT_OUTPUT_TRUNC){
+
+						if(state == REDIRECT_INPUT){
+							state = BOTH_IN_OUT_TRUNC;
+						}
+						else state = REDIRECT_OUTPUT_TRUNC;
+
+						out_filename = token_array[i + 1];
+
+					}
+					else if(operator_identity == REDIRECT_OUTPUT_APP){
+
+						if(state == REDIRECT_INPUT){
+							state = BOTH_IN_OUT_APP;
+						}
+						else state = REDIRECT_OUTPUT_APP;
+
+						out_filename = token_array[i + 1];
+					}
+					else if(operator_identity == REDIRECT_INPUT){
+
+						if(state == REDIRECT_OUTPUT_TRUNC){
+							state = BOTH_IN_OUT_TRUNC;
+						}
+						else if(state == REDIRECT_OUTPUT_APP){
+							state = BOTH_IN_OUT_APP;
+						}
+						else state = REDIRECT_INPUT;
+
+						in_filename = token_array[i + 1];
+
+					}
 					i++;
 				}
-				else {
-					printf("No argument after operator.\n");
+				else if(is_operator(token_array[i]) == BACKGROUND){
+				
+					state = BACKGROUND;	
+	
+				}
+				else if(is_operator(token_array[i]) == PIPE){
+
+					state = PIPE;
+
+				}
+				else{	
+					printf("No arguments after operator.\n");
+					error_call = 1;
 					break;
 				}
-			}
+			}	
 		}
 		i++;
 	}
@@ -351,7 +386,7 @@ void execute_command(char* command, char** arguments, char* out_filename, char* 
                 }
                 else{
 
-                        command_external(command, arguments);
+                        command_external(command, arguments, out_filename, in_filename, state);
 
                 }
         }
