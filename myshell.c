@@ -203,8 +203,6 @@ void parse_input(char** token_array, char* user_input){
 
 	int look_for_arguments = 0, num_arguments = 0;
 
-	int error_call = 0;
-
 	int state = -1;
 
 	while(token_array[i] != NULL){
@@ -252,64 +250,74 @@ void parse_input(char** token_array, char* user_input){
 
 			}
 			else{
+				if(operator_identity == REDIRECT_OUTPUT_TRUNC || operator_identity == REDIRECT_OUTPUT_APP || operator_identity == REDIRECT_INPUT){
+					if(token_array[i + 1] != NULL){
 
-				if(token_array[i + 1] != NULL){
+						if(operator_identity == REDIRECT_OUTPUT_TRUNC){
 
-					if(operator_identity == REDIRECT_OUTPUT_TRUNC){
+							if(state == REDIRECT_INPUT){
+								state = BOTH_IN_OUT_TRUNC;
+							}
+							else state = REDIRECT_OUTPUT_TRUNC;
 
-						if(state == REDIRECT_INPUT){
-							state = BOTH_IN_OUT_TRUNC;
+							out_filename = token_array[i + 1];
+
+						}	
+						else if(operator_identity == REDIRECT_OUTPUT_APP){
+
+							if(state == REDIRECT_INPUT){
+								state = BOTH_IN_OUT_APP;
+							}	
+							else state = REDIRECT_OUTPUT_APP;
+
+							out_filename = token_array[i + 1];
 						}
-						else state = REDIRECT_OUTPUT_TRUNC;
+						else if(operator_identity == REDIRECT_INPUT){
 
-						out_filename = token_array[i + 1];
+							if(state == REDIRECT_OUTPUT_TRUNC){
+								state = BOTH_IN_OUT_TRUNC;
+							}
+							else if(state == REDIRECT_OUTPUT_APP){
+								state = BOTH_IN_OUT_APP;
+							}
+							else state = REDIRECT_INPUT;
 
+							in_filename = token_array[i + 1];
+
+						}
+						i++;
 					}
-					else if(operator_identity == REDIRECT_OUTPUT_APP){
-
-						if(state == REDIRECT_INPUT){
-							state = BOTH_IN_OUT_APP;
-						}
-						else state = REDIRECT_OUTPUT_APP;
-
-						out_filename = token_array[i + 1];
+					else{	
+						printf("No arguments after operator.\n");
+						return;
 					}
-					else if(operator_identity == REDIRECT_INPUT){
-
-						if(state == REDIRECT_OUTPUT_TRUNC){
-							state = BOTH_IN_OUT_TRUNC;
-						}
-						else if(state == REDIRECT_OUTPUT_APP){
-							state = BOTH_IN_OUT_APP;
-						}
-						else state = REDIRECT_INPUT;
-
-						in_filename = token_array[i + 1];
-
-					}
-					i++;
 				}
 				else if(operator_identity == BACKGROUND){
-				
+
+					if(arguments == NULL){
+						printf("& used without argument.\n");
+						return;
+					}
+					
 					state = BACKGROUND;
+
 					command_external(arguments, in_filename, out_filename, state);
-					look_for_arguments = 0;
 					num_arguments = 0;
-					free(arguments);
+					look_for_arguments = 0;
 					state = -1;
+					free(arguments);
 					arguments = NULL;
-				}
-				else{	
-					printf("No arguments after operator.\n");
-					error_call = 1;
-					break;
+
 				}
 			}	
 		}
 		i++;
 	}
 
-	if(built_in_command != NULL){
+	if(built_in_command == NULL && arguments == NULL){
+		return;
+	}
+	else if(built_in_command != NULL){
 
 		if(is_built_in(built_in_command) == EXIT_COMMAND && num_arguments == 0){
 			free(user_input);

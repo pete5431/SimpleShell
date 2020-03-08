@@ -115,10 +115,10 @@ int is_valid_external(char* command){
 
 		char bin[6] = "/bin/";
 
-		char user_bin[11] = "/usr/bin/";
+		char user_bin[10] = "/usr/bin/";
 
 		char* bin_path = malloc(strlen(command) + 7 * sizeof(char));
-		char* user_bin_path = malloc(strlen(command) + 12 * sizeof(char));
+		char* user_bin_path = malloc(strlen(command) + 11 * sizeof(char));
 
 		strncpy(bin_path, bin, 5);
 		strncpy(user_bin_path, user_bin, 10);
@@ -153,7 +153,7 @@ int is_valid_external(char* command){
 		free(user_bin_path);
 		return valid;
 	}
-	return -1;
+	return valid;
 }
 
 void command_cd(char* directory_name){
@@ -212,7 +212,7 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 		}
 	}
 
-	int pid = fork();
+	pid_t pid = fork();
 
 	if(pid == -1){
 		printf("Forking error.\n");
@@ -228,7 +228,7 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 
 		if(state != BACKGROUND){
 			int status = 0;
-			wait(&status);
+			waitpid(pid, &status, 0);
 		}
 	}
 	dup2(original_stdin, 0);
