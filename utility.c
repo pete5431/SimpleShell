@@ -216,6 +216,7 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 
 	if(pid == -1){
 		printf("Forking error.\n");
+		return;
 	}			
 	else if(pid == 0){
 
@@ -233,6 +234,54 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 	}
 	dup2(original_stdin, 0);
 	dup2(original_stdout, 1);
+}
+
+void command_external_pipe(char** arg1, char** arg2){
+
+	int fd[2];
+
+	pipe(fd);
+
+	pid_t pid_1 = fork();
+
+	if(pid_1 == -1){
+		printf("Forking Error.\n");
+		return;
+	}
+	else if(pid_1 == 0){
+		close(fd[0]);
+		dup2(fd[1], STDOUT_FILENO);
+		close(fd[1]);
+		if(execv(arg1[0], arg1)){
+			printf("Error running arg1.\n");
+			exit(0);
+		}	
+	}
+	else{
+
+		pid_t pid_2 = fork();
+	
+		if(pid_2 == -1){
+			printf("Forking Error.\n");
+			return;
+		}
+		else if(pid_2 == 0){
+			close(fd[1]);
+			dup2(fd[0], STDIN_FILENO);
+			close(fd[0]);
+			if(execv(arg2[0], arg2)){
+				printf("Error running arg2.\n");
+				exit(0);
+			}
+		}
+		else{
+			int status;
+			close(fd[1]);
+			close(fd[0]);
+			waitpid(pid_1, &status, 0);
+			waitpid(pid_2, &status, 0);
+		}
+	}
 }
 
 void command_help(char* command){

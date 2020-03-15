@@ -197,6 +197,8 @@ void parse_input(char** token_array, char* user_input){
 
 	char** arguments = NULL;
 
+	char** pipe_arg = NULL;
+
 	char* out_filename = NULL;
 
 	char* in_filename = NULL;
@@ -204,6 +206,8 @@ void parse_input(char** token_array, char* user_input){
 	int look_for_arguments = 0, num_arguments = 0;
 
 	int state = -1;
+
+	int pipe_on = 0;
 
 	while(token_array[i] != NULL){
 
@@ -221,9 +225,17 @@ void parse_input(char** token_array, char* user_input){
 
                                 	look_for_arguments = 1;
 				
-					arguments = add_argument(arguments, token_array[i], num_arguments);
+					if(pipe_on){
 
-                                	num_arguments++;
+						pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
+						num_arguments++;
+
+					}else {
+			
+						arguments = add_argument(arguments, token_array[i], num_arguments);
+
+                                		num_arguments++;
+					}
 
 				}
 				else{
@@ -244,10 +256,16 @@ void parse_input(char** token_array, char* user_input){
 
 			if(operator_identity == -1){
 
-				arguments = add_argument(arguments, token_array[i], num_arguments);
-	
-				num_arguments++;
+				if(pipe_on){
+					pipe_arg = add_argument(arguments, token_array[i], num_arguments);
+					num_arguments++;
+				}
+				else{
 
+					arguments = add_argument(arguments, token_array[i], num_arguments);
+	
+					num_arguments++;
+				}
 			}
 			else{
 				if(operator_identity == REDIRECT_OUTPUT_TRUNC || operator_identity == REDIRECT_OUTPUT_APP || operator_identity == REDIRECT_INPUT){
@@ -309,6 +327,13 @@ void parse_input(char** token_array, char* user_input){
 					arguments = NULL;
 
 				}
+				else if(operator_identity == PIPE){
+					
+					pipe_on = 1;		
+					look_for_arguments = 0;
+					num_arguments = 0;
+
+				}
 			}	
 		}
 		i++;
@@ -327,9 +352,13 @@ void parse_input(char** token_array, char* user_input){
 		else execute_built_in(built_in_command, arguments, out_filename, num_arguments, state);
 
 	}
-	else command_external(arguments, out_filename, in_filename, state);
-
+	else{
+		if(pipe_on){
+			command_external_pipe(arguments, pipe_arg);
+		}else command_external(arguments, out_filename, in_filename, state);
+	}
 	free(arguments);
+	free(pipe_arg);
 }
 
 void execute_built_in(char* command, char** arguments, char* out_filename, int num_arguments, int state){
