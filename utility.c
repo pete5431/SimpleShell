@@ -153,6 +153,17 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 
 	if(state != -1){
 
+		if(state == REDIRECT_INPUT || state == BOTH_IN_OUT_APP || state == BOTH_IN_OUT_TRUNC){
+                        int in_file = open(in_filename, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);
+                        if(in_file == -1){
+                                printf("%s not found.\n", in_filename);
+                                return;
+                        }
+                        dup2(in_file, 0);
+                        close(in_file);
+                }
+
+
 		if(state == REDIRECT_OUTPUT_TRUNC || state == BOTH_IN_OUT_TRUNC){
 			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
 			if(out_file == -1){
@@ -173,21 +184,14 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
                         close(out_file);
 		}
 
-		if(state == REDIRECT_INPUT || state == BOTH_IN_OUT_APP || state == BOTH_IN_OUT_TRUNC){
-			int in_file = open(in_filename, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);
-			if(in_file == -1){
-				printf("%s not found.\n", in_filename);
-				return;
-			}
-			dup2(in_file, 0);
-			close(in_file);
-		}
 	}
 
 	pid_t pid = fork();
 
 	if(pid == -1){
 		printf("Forking error.\n");
+		dup2(original_stdin, 0);
+		dup2(original_stdout, 1);
 		return;
 	}			
 	else if(pid == 0){
@@ -221,6 +225,8 @@ void command_external_pipe(char** arg1, char** arg2){
 
 	if(pid_1 == -1){
 		printf("Forking Error.\n");
+		close(fd[1]);
+		close(fd[0]);
 		return;
 	}
 	else if(pid_1 == 0){
@@ -238,6 +244,8 @@ void command_external_pipe(char** arg1, char** arg2){
 	
 		if(pid_2 == -1){
 			printf("Forking Error.\n");
+			close(fd[1]);
+			close(fd[0]);
 			return;
 		}
 		else if(pid_2 == 0){
