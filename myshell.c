@@ -100,10 +100,13 @@ int main(int argc, char* argv[]){
 
 		}
 
+		// Tokenize the input by spaces into a array of tokens.
 		char** token_array = tokenize(user_input, " \t\n");
 
+		// Parse the token array to execute commands.
 		parse_input(token_array, user_input);
 
+		// Free the token array.
 		free_token_array(token_array);
 	}
 	return 0;
@@ -199,6 +202,7 @@ char** add_argument(char** arguments, char* add_on, int num_arguments){
 	return arguments;
 }
 
+// Checks if the token array contains pipe or run in background.
 int contains_pipe_or_back(char** token_array){
 
 	int i = 0;
@@ -213,22 +217,31 @@ int contains_pipe_or_back(char** token_array){
 	return 0;
 }
 
+// Takes the token array and parses it.
 void parse_input(char** token_array, char* user_input){
 
 	int i = 0;
 
+	// Contains the built in command if built in command is detected.
 	char* built_in_command = NULL;
 
+	// Contains the arguments plus external command at index 0.
 	char** arguments = NULL;
-
+	
+	// Contains the command and arguments on other end of pipe.
 	char** pipe_arg = NULL;
 
+	// The output filename after a output redirect.
 	char* out_filename = NULL;
 
+	// The input filename after a input redirect.
 	char* in_filename = NULL;
 
+	// look_for_arguments indicates whether or not a command was found.
+ 	// num_arguments is the number of arguments currently in either arguments or pipe_arg.
 	int look_for_arguments = 0, num_arguments = 0;
 
+	// The state of the command, either redirection, background or pipe. -1 by default to indicate normal state.
 	int state = -1;
 
 	int pipe_on = 0, use_built_in = 1;
@@ -241,7 +254,11 @@ void parse_input(char** token_array, char* user_input){
 
 		if(!look_for_arguments){
 
-			if(use_built_in && is_built_in(token_array[i]) != -1){
+			if(is_operator(token_array[i]) != -1){
+				printf("Improper use of %s\n", token_array[i]);
+				return;
+			}
+			else if(use_built_in && is_built_in(token_array[i]) != -1){
 
 				built_in_command = token_array[i];
                         	look_for_arguments = 1;
@@ -249,28 +266,20 @@ void parse_input(char** token_array, char* user_input){
 			}
 			else{
 
-                                look_for_arguments = 1;
-				
 				if(pipe_on){
-
 					pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
 					num_arguments++;
-
 				}else {
-			
 					arguments = add_argument(arguments, token_array[i], num_arguments);
-
                                 	num_arguments++;
-				}	
-
+				}
+				look_for_arguments = 1;	
 			}
 
 		}
 		else if(look_for_arguments){
 
-			int operator_identity = -1;
-		
-			operator_identity = is_operator(token_array[i]);
+			int operator_identity = is_operator(token_array[i]);
 
 			if(operator_identity == -1){
 
@@ -281,7 +290,6 @@ void parse_input(char** token_array, char* user_input){
 				else{
 
 					arguments = add_argument(arguments, token_array[i], num_arguments);
-	
 					num_arguments++;
 				}
 			}
@@ -329,11 +337,6 @@ void parse_input(char** token_array, char* user_input){
 					}
 				}
 				else if(operator_identity == BACKGROUND){
-
-					if(arguments == NULL){
-						printf("& used without argument.\n");
-						return;
-					}
 					
 					state = BACKGROUND;
 

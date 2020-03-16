@@ -107,55 +107,6 @@ int is_operator(char* token){
         else return -1;
 }
 
-int is_valid_external(char* command){
-
-	int valid = -1;
-
-	if(command != NULL){
-
-		char bin[6] = "/bin/";
-
-		char user_bin[10] = "/usr/bin/";
-
-		char* bin_path = malloc(strlen(command) + 7 * sizeof(char));
-		char* user_bin_path = malloc(strlen(command) + 11 * sizeof(char));
-
-		strncpy(bin_path, bin, 5);
-		strncpy(user_bin_path, user_bin, 10);
-
-		strncat(bin_path, command, strlen(command) + 1);
-		strncat(user_bin_path, command, strlen(command) + 1);
-
-		if(access(bin_path, X_OK) != -1){
-
-			command = (char*) realloc(command, strlen(bin_path) + 1 * sizeof(char));
-
-			strncpy(command, bin_path, strlen(bin_path) + 1);
-
-			valid = 1;
-
-		}
-		else if(access(user_bin_path, X_OK) != -1){
-
-			command = (char*) realloc(command, strlen(user_bin_path) + 1 * sizeof(char));
-
-			strncpy(command, user_bin_path, strlen(user_bin_path) + 1);
-
-			valid = 1;
-			
-		}
-		else if(access(command, X_OK) != -1){
-
-			valid = 1;
-
-		}
-		free(bin_path);
-		free(user_bin_path);
-		return valid;
-	}
-	return valid;
-}
-
 void command_cd(char* directory_name){
 
 	if(directory_name == NULL){
@@ -204,7 +155,7 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 		}
 		
 		if(state == REDIRECT_OUTPUT_APP || state == BOTH_IN_OUT_APP){
-			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);
+			int out_file = open(out_filename, O_WRONLY|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);
 			if(out_file == -1){
 				printf("%s not found.\n", out_filename);
 				return;
@@ -233,6 +184,8 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 	else if(pid == 0){
 
 		if(execvp(argv[0], argv) < 0){
+			dup2(original_stdin, 0);
+			dup2(original_stdout, 1);
 			printf("%s not valid command.\n", argv[0]);
 			exit(0);
 		}	
@@ -498,7 +451,7 @@ void command_dir(char** arguments, char* out_filename, int state){
 			if(strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0){
 
 			}	
-			else printf("%s\n", d->d_name);
+			else printf("%s ", d->d_name);
 		}
 	
 		printf("\n");
