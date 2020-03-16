@@ -29,9 +29,6 @@ enum Operator {
 	BACKGROUND = 15
 };
 
-// Array for environment variables.
-extern char* environ[];
-
 // Tokenizes the input with the delimiter, and returns an array of string tokens.
 char** tokenize(char* input, char* delimiter);
 // Frees the array of string tokens.
@@ -267,13 +264,15 @@ void parse_input(char** token_array, char* user_input){
 	// The state of the command, either redirection, background or pipe. -1 by default to indicate normal state.
 	int state = -1;
 
-	// pipe_on indicates if pipe is detected, which prompts the while look to instead add arguments to pipe_arg.
-	// use_built_in is to indicate if pipe or background is present, use non built-in version of built-in command.
+	// pipe_on indicates if pipe is detected, which prompts the while loop to instead add arguments to pipe_arg.
+	// use_built_in is to indicate if pipe, background, or input redirect is present, then  use non built-in version of built-in command.
 	int pipe_on = 0, use_built_in = 1;
 
-	int count_redirect = 0;
+	// For error handling, in case multiple redirects of the same kind are entered.
+	int out_count = 0;
+	int in_count = 0;
 
-	// Checks if token array contains pipe or background, and sets use_built_in to false if detected.
+	// Checks if token array contains pipe, background, or input redirect, and sets use_built_in to false if detected.
 	if(contains_non_built_in_operator(token_array)){
 		use_built_in = 0;
 	}
@@ -281,198 +280,247 @@ void parse_input(char** token_array, char* user_input){
 	// Loop through all tokens of token array until reaching NULL.
 	while(token_array[i] != NULL){
 
+		// If the very first token is a operator, print error and return.
 		if(i == 0 && is_operator(token_array[i]) != -1){
 			printf("Improper use of %s\n", token_array[i]);
 			return;
 		}
+		// If built in versions are being used, and the first token is a valid built in command.
 		else if(use_built_in && is_built_in(token_array[i]) != -1){
 
+			// Set built in command equal to the token.
 			built_in_command = token_array[i];
+			// Set use built in to false.
 			use_built_in = 0;
 		}
 		else{
 
+			// Used to check if the token is an operator. It is -1 if not an operator we care about.
 			int operator_identity = is_operator(token_array[i]);
 
+			// If not an operator.
 			if(operator_identity == -1){
 
+				// If pipe is on, add arguments to the pipe_arg array instead of arguments array.
 				if(pipe_on){
 					pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
 					num_arguments++;
 				}
+				// Add arguments to arguments array.
 				else{
-
 					arguments = add_argument(arguments, token_array[i], num_arguments);
 					num_arguments++;
 				}
+				// Set use built in to 0 because a command was already accepted at this point.
 				use_built_in = 0;
 			}
 			else{
+				// If the operator is a redirect.
 				if(operator_identity == REDIRECT_OUTPUT_TRUNC || operator_identity == REDIRECT_OUTPUT_APP || operator_identity == REDIRECT_INPUT){
+					// If the next token is not NULL.
 					if(token_array[i + 1] != NULL){
-
+						// If the operator is ">".
 						if(operator_identity == REDIRECT_OUTPUT_TRUNC){
-
+							// If the state is already <, make it both < and >.
 							if(state == REDIRECT_INPUT){
 								state = BOTH_IN_OUT_TRUNC;
 							}
+							// Else make it just >.
 							else state = REDIRECT_OUTPUT_TRUNC;
-
+							// Set the output file name to the next token.
 							out_filename = token_array[i + 1];
-
-						}	
+							// Increment the output redirect count.
+							out_count++;					
+						}
+						// If the operator is ">>".	
 						else if(operator_identity == REDIRECT_OUTPUT_APP){
-
+							// If the state is already <, make it both < and >>.
 							if(state == REDIRECT_INPUT){
 								state = BOTH_IN_OUT_APP;
 							}	
+							// Else make it just >>.
 							else state = REDIRECT_OUTPUT_APP;
-
+							// Set the output file name to the next token.
 							out_filename = token_array[i + 1];
+							// Increment the output redirect count.
+							out_count++;
 						}
+						// If the operator is "<".
 						else if(operator_identity == REDIRECT_INPUT){
-
+							// If the state is already > or >> make it both respectively.
 							if(state == REDIRECT_OUTPUT_TRUNC){
 								state = BOTH_IN_OUT_TRUNC;
 							}
 							else if(state == REDIRECT_OUTPUT_APP){
 								state = BOTH_IN_OUT_APP;
 							}
+							// Else make it just <.
 							else state = REDIRECT_INPUT;
-
+							// Set the input file name to the next token.
 							in_filename = token_array[i + 1];
-
+							// Increment the input redirect count.
+							in_count++;
 						}
+						// If the count of out redirects or in redirect is greater than 1.
+						if(out_count > 1 || in_count > 1){
+							// Print the error.
+							printf("Error: too many redirects.\n");
+							// Free necessary arrays.
+							free(arguments);
+							free(pipe_arg);
+							// Return to the loop.
+							return;
+						}
+						// Increment i because the next token was taken.
 						i++;
 					}
+					// If the next token is NULL, print error for no arguments.
 					else{	
 						printf("No arguments after operator.\n");
 						return;
 					}
 				}
+				// If the operator is background.
 				else if(operator_identity == BACKGROUND){
-					
+					// Change the state to background.
 					state = BACKGROUND;
-
+					// Execute the external in the background.
 					command_external(arguments, in_filename, out_filename, state);
+					// Set the number of arguments back to zero.
 					num_arguments = 0;
+					// Set state back to normal.
 					state = -1;
+					// Free arguments.
 					free(arguments);
+					// Set arguments back to NULL.
 					arguments = NULL;
 
 				}
+				// If the operator is PIPE.
 				else if(operator_identity == PIPE){
 				
+					// If the next token is NULL, print error.
 					if(token_array[i + 1] == NULL){
 						printf("No argument after pipe.\n");
 						return;
 					}
-	
-					pipe_on = 1;		
+					// Set pipe_on to true.
+					pipe_on = 1;	
+					// Reset number of arguments to zero.	
 					num_arguments = 0;
-
 				}
 			}	
 		}
 		i++;
 	}
 
+	// If the built in command is NULL and arguments is NULL, return back to loop.
 	if(built_in_command == NULL && arguments == NULL){
 		return;
 	}
+	// Else if the built in command is not NULL.
 	else if(built_in_command != NULL){
 
+		// If the built in command was exit, and only exit was entered, free necessary arrays, and exit shell.
 		if(is_built_in(built_in_command) == EXIT_COMMAND && num_arguments == 0){
 			free(user_input);
 			free(token_array);
+			free(arguments);
 			exit(0);
 		}
+		// Else execute the built in command.
 		else execute_built_in(built_in_command, arguments, out_filename, num_arguments, state);
 
 	}
 	else{
+		// Eternal commands.
+
+		// If pipe is on, call the pipe external command. Else call normal external command.
 		if(pipe_on){
 			command_external_pipe(arguments, pipe_arg);
 		}else command_external(arguments, out_filename, in_filename, state);
 	}
+	// Free necessary arrays.
 	free(arguments);
 	free(pipe_arg);
 }
 
+// Function for determining which built-in command function to call with necessary arguments.
 void execute_built_in(char* command, char** arguments, char* out_filename, int num_arguments, int state){
 
-	if(command != NULL){
-
-                if(is_built_in(command) == CD_COMMAND){
-
-                        if(num_arguments > 1){
-
-                                printf("Too many arguments to cd.\n");
-
-                        }
-                        else if(num_arguments == 1){
-
-                                command_cd(arguments[0]);
-
-                        }
-                        else if(num_arguments == 0){
-
-                                command_cd(NULL);
-
-                        }
-
+	// If the command is cd.
+	if(is_built_in(command) == CD_COMMAND){
+		// If arguments more than 1, print error.
+		if(num_arguments > 1){
+			printf("Too many arguments to cd.\n");
+		}
+		// If arguments is 1, pass the only argument to cd.
+                else if(num_arguments == 1){
+			command_cd(arguments[0]);
+		}
+		// If no arguments, pass NULL to cd.
+                else if(num_arguments == 0){
+			command_cd(NULL);
+		}
+	}
+	// If the command is clr.
+       	else if(is_built_in(command) == CLR_COMMAND){
+		// Call clr command.
+		command_clr();
+	}
+	// If the command is help.
+       	else if(is_built_in(command) == HELP_COMMAND){
+		// If arguments is just one, call command help with that argument.
+		if(num_arguments == 1){
+			command_help(arguments[0], out_filename, state);
+		}
+		// If no arguments, print error.
+		else if(num_arguments == 0){
+			printf("No arguments after help.\n");
+		}
+		// If more than one argument, print error.
+		else if(num_arguments > 1){
+			printf("Too many arguments to help.\n");
+		}
+	}
+	// If the command is echo.
+	else if(is_built_in(command) == ECHO_COMMAND){
+		// Call the echo command.
+		command_echo(arguments, out_filename, state);
+	}
+	// If the command is dir.
+        else if(is_built_in(command) == ENVIRON_COMMAND){
+		// Call the dir command.
+		command_environ(out_filename, state);
+	}
+	// If the command is pause.
+        else if(is_built_in(command) == PAUSE_COMMAND){
+		// As long as no arguments, call pause.
+                if(num_arguments == 0){
+			command_pause();
                 }
-                else if(is_built_in(command) == CLR_COMMAND){
-
-                        if(num_arguments == 0){
-
-                                command_clr();
-
-                        }
-
-                }
-                else if(is_built_in(command) == HELP_COMMAND){
-
-                        if(num_arguments == 1){
-				command_help(arguments[0], out_filename, state);
+	}
+	// If the command is dir.
+        else if(is_built_in(command) == DIR_COMMAND){
+		// If no arguments, default to print contents of current directory.
+		if(num_arguments == 0){
+			// Get the current working directory.
+			char* cwd = getcwd(NULL, 0);
+			// Make sure getcwd returned something.
+			if(cwd == NULL){
+				printf("Error: Couldn't get cwd.\n");
+				return;
 			}
-			else if(num_arguments == 0){
-				printf("No arguments after help.\n");
-			}
-			else if(num_arguments > 1){
-				printf("Too many arguments to help.\n");
-			}
-                }
-		else if(is_built_in(command) == ECHO_COMMAND){
-
-                       	command_echo(arguments, out_filename, state);
-
-                }
-                else if(is_built_in(command) == ENVIRON_COMMAND){
-
-                        command_environ(out_filename, state);
-
-                }
-                else if(is_built_in(command) == PAUSE_COMMAND){
-
-                        if(num_arguments == 0){
-                                command_pause();
-                        }
-                }
-                else if(is_built_in(command) == DIR_COMMAND){
-			
-			if(num_arguments == 0){
-				char* cwd = getcwd(NULL, 0);
-
-				arguments = add_argument(arguments, cwd, num_arguments);
-
-				command_dir(arguments, out_filename, state);
-
-				free(cwd);
-			}
-                        else{
-				command_dir(arguments, out_filename, state);
-			}
-                }
-        }
+			// Add cwd to arguments.
+			arguments = add_argument(arguments, cwd, num_arguments);
+			// Call the dir command.
+			command_dir(arguments, out_filename, state);
+			// Free the string for cwd.
+			free(cwd);
+		}
+                else{
+			// Else just call dir command.
+			command_dir(arguments, out_filename, state);
+		}
+	}
 }
