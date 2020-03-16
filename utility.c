@@ -195,18 +195,30 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 
 		if(state == REDIRECT_OUTPUT_TRUNC || state == BOTH_IN_OUT_TRUNC){
 			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
+			if(out_file == -1){
+				printf("%s not found.\n", out_filename);
+				return;
+			}
 			dup2(out_file, 1);
 			close(out_file);
 		}
 		
 		if(state == REDIRECT_OUTPUT_APP || state == BOTH_IN_OUT_APP){
 			int out_file = open(out_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRWXU|S_IRWXG|S_IRWXO);
+			if(out_file == -1){
+				printf("%s not found.\n", out_filename);
+				return;
+			}
                         dup2(out_file, 1);
                         close(out_file);
 		}
 
 		if(state == REDIRECT_INPUT || state == BOTH_IN_OUT_APP || state == BOTH_IN_OUT_TRUNC){
 			int in_file = open(in_filename, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO);
+			if(in_file == -1){
+				printf("%s not found.\n", in_filename);
+				return;
+			}
 			dup2(in_file, 0);
 			close(in_file);
 		}
@@ -220,7 +232,8 @@ void command_external(char** argv, char* out_filename, char* in_filename, int st
 	}			
 	else if(pid == 0){
 
-		if(execv(argv[0], argv) < 0){
+		if(execvp(argv[0], argv) < 0){
+			printf("%s not valid command.\n", argv[0]);
 			exit(0);
 		}	
 
@@ -252,7 +265,7 @@ void command_external_pipe(char** arg1, char** arg2){
 		close(fd[0]);
 		dup2(fd[1], STDOUT_FILENO);
 		close(fd[1]);
-		if(execv(arg1[0], arg1)){
+		if(execvp(arg1[0], arg1)){
 			printf("Error running arg1.\n");
 			exit(0);
 		}	
@@ -269,7 +282,7 @@ void command_external_pipe(char** arg1, char** arg2){
 			close(fd[1]);
 			dup2(fd[0], STDIN_FILENO);
 			close(fd[0]);
-			if(execv(arg2[0], arg2)){
+			if(execvp(arg2[0], arg2)){
 				printf("Error running arg2.\n");
 				exit(0);
 			}
@@ -284,27 +297,78 @@ void command_external_pipe(char** arg1, char** arg2){
 	}
 }
 
-void command_help(char* command){
+void command_help(char* command, char* out_filename, int state){
 
-	int print_all = 0;
+        FILE* out_fp = NULL;
+
+        int original_stdout = dup(1);
+
+        if(state != -1){
+
+                if(state == REDIRECT_OUTPUT_TRUNC){
+                        out_fp = fopen(out_filename, "w");
+                }
+                else if(state == REDIRECT_OUTPUT_APP){
+                        out_fp = fopen(out_filename, "a+");
+                }
+
+                if(out_fp == NULL){
+                        printf("Error: file not found.\n");
+                        return;
+                }
+                dup2(fileno(out_fp), 1);
+        }
 
 	if(command == NULL){
-
-		print_all = 1;
-
+		printf("Enter a command after help.\n");
 	}
-	
-	if(command != NULL){
+	else {
 
-		if(is_built_in(command) == CD_COMMAND){
+		int command_identity = is_built_in(command);
 
+		if(command_identity == -1){
+			printf("Command not built-in.\n");
+			return;
+		}
+
+		if(command_identity == CD_COMMAND){
 			printf("Command cd: \n");
 			printf("cd accepts one or no arguments.\n");
 			printf("If no arguments, prints current directory.\n");
 			printf("If one arguments, changes to the given directory if valid.\n");
-
+		}
+		else if(command_identity == ENVIRON_COMMAND){
+			printf("Command environ: \n");
+			printf("environ prints out environment variables.\n");
+		}
+		else if(command_identity == ECHO_COMMAND){
+			printf("Command echo: \n");
+			printf("echo prints out to screen everything after it.\n");
+		}
+		else if(command_identity == DIR_COMMAND){
+			printf("Command dir: \n");
+			printf("dir prints out to screen the directory contents.\n");
+			printf("If no arguments, it prints out the current directory contents");
+			printf("If arguments present, and the directory is valid, it prints out the contents.\n");
+		}
+		else if(command_identity == HELP_COMMAND){
+			printf("Command help: \n");
+			printf("The command that prints out the manual for a built-in command.\n");
+			printf("Needs one argument, which is the command to print manual for.\n");
+		}
+		else if(command_identity == PAUSE_COMMAND){
+			printf("Command pause: \n");
+			printf("The command pause pauses the shell until enter is entered.\n");
+		}
+		else if(command_identity == EXIT_COMMAND){
+			printf("Command exit: \n");
+			printf("The command exit exits the shell.\n");
 		}
 	}	
+	if(out_fp != NULL){
+                fclose(out_fp);
+        }
+        dup2(original_stdout, 1);
 }
 
 void command_echo(char** arguments, char* out_filename, int state){
@@ -345,11 +409,38 @@ void command_echo(char** arguments, char* out_filename, int state){
 	dup2(original_stdout, 1);
 }
 
-void command_environ(){
+void command_environ(char* out_filename, int state){
+
+	FILE* out_fp = NULL;
+
+        int original_stdout = dup(1);
+
+        if(state != -1){
+
+                if(state == REDIRECT_OUTPUT_TRUNC){
+                        out_fp = fopen(out_filename, "w");
+                }
+                else if(state == REDIRECT_OUTPUT_APP){
+                        out_fp = fopen(out_filename, "a+");
+                }
+
+                if(out_fp == NULL){
+                        printf("Error: file not found.\n");
+                        return;
+                }
+                dup2(fileno(out_fp), 1);
+        }
 
 	printf("USER=%s\n", getenv("USER"));
 	printf("PATH=%s\n", getenv("PATH"));
 	printf("PWD=%s\n", getenv("PWD"));
+	printf("LANG=%s\n", getenv("LANG"));
+	printf("HOME=%s\n", getenv("HOME"));
+
+	if(out_fp != NULL){
+		fclose(out_fp);
+	}
+	dup2(original_stdout, 1);
 }
 
 void command_pause(){

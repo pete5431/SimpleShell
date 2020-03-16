@@ -35,8 +35,6 @@ void parse_input(char** token_array, char* user_input);
 char** add_argument(char**, char*, int);
 void execute_built_in(char*, char**, char*, int, int);
 
-void set_shell_path();
-
 int main(int argc, char* argv[]){
 
 	int bash_mode_on = 0;
@@ -154,19 +152,6 @@ void free_token_array(char** token_array){
 	free(token_array);
 }
 
-void set_shell_path(){
-
-	char cwd[100];
-
-	getcwd(cwd, 100);
-
-	char shell_name[9] = "/myshell";
-
-	strncat(cwd, shell_name, 9);
-
-	setenv("shell", cwd, 1); 
-}
-
 char** add_argument(char** arguments, char* add_on, int num_arguments){
 
 	char** new_arguments = realloc(arguments, (num_arguments + 2) * sizeof(char*));
@@ -221,29 +206,19 @@ void parse_input(char** token_array, char* user_input){
 			}
 			else{
 
-				if(is_valid_external(token_array[i]) != -1){
-
-                                	look_for_arguments = 1;
+                                look_for_arguments = 1;
 				
-					if(pipe_on){
+				if(pipe_on){
 
-						pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
-						num_arguments++;
+					pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
+					num_arguments++;
 
-					}else {
+				}else {
 			
-						arguments = add_argument(arguments, token_array[i], num_arguments);
+					arguments = add_argument(arguments, token_array[i], num_arguments);
 
-                                		num_arguments++;
-					}
-
-				}
-				else{
-
-					printf("%s not valid command.\n", token_array[i]);
-					return;
-
-				}
+                                	num_arguments++;
+				}	
 
 			}
 
@@ -257,7 +232,7 @@ void parse_input(char** token_array, char* user_input){
 			if(operator_identity == -1){
 
 				if(pipe_on){
-					pipe_arg = add_argument(arguments, token_array[i], num_arguments);
+					pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
 					num_arguments++;
 				}
 				else{
@@ -396,16 +371,14 @@ void execute_built_in(char* command, char** arguments, char* out_filename, int n
                 else if(is_built_in(command) == HELP_COMMAND){
 
                         if(num_arguments == 1){
-
-                                command_help(arguments[0]);
-
-                        }
-                        else if(num_arguments == 0){
-
-                                command_help(NULL);
-
-                        }
-
+				command_help(arguments[0], out_filename, state);
+			}
+			else if(num_arguments == 0){
+				printf("No arguments after help.\n");
+			}
+			else if(num_arguments > 1){
+				printf("Too many arguments to help.\n");
+			}
                 }
 		else if(is_built_in(command) == ECHO_COMMAND){
 
@@ -418,9 +391,7 @@ void execute_built_in(char* command, char** arguments, char* out_filename, int n
                 }
                 else if(is_built_in(command) == ENVIRON_COMMAND){
 
-                        if(num_arguments == 0){
-                                command_environ();
-                        }
+                        command_environ(out_filename, state);
 
                 }
                 else if(is_built_in(command) == PAUSE_COMMAND){
