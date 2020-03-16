@@ -110,9 +110,8 @@ int is_operator(char* token){
 void command_cd(char* directory_name){
 
 	if(directory_name == NULL){
-
+		// If no directory name was given, simply print the current directory.
 		printf("%s\n", getenv("PWD"));
-
 	}	
 	else{
 
@@ -120,12 +119,22 @@ void command_cd(char* directory_name){
 	
 			char* cwd = getcwd(NULL, 0);
 
-			setenv("PWD", cwd, 1);	
+			if(cwd == NULL){
+				printf("Error: couldn't get cwd.\n");
+				return;
+			}
+
+			if(setenv("PWD", cwd, 1) < 0){
+				printf("Error: couldn't update PWD.");
+				free(cwd);
+				return;
+			}
 
 			free(cwd);
 		}
 		else{
 			printf("Error: directory not found\n");
+			return;
 		}
 
 	}
@@ -316,6 +325,10 @@ void command_help(char* command, char* out_filename, int state){
 		else if(command_identity == EXIT_COMMAND){
 			printf("Command exit: \n");
 			printf("The command exit exits the shell.\n");
+		}
+		else if(command_identity == CLR_COMMAND){
+			printf("Command clr: \n");
+			printf("The command clr clears the screen.\n");
 		}
 	}	
 	if(out_fp != NULL){

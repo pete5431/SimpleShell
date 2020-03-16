@@ -39,7 +39,7 @@ void parse_input(char** token_array, char* user_input);
 char** add_argument(char**, char*, int);
 // Accepts a built in command, and decide which command function to call, and handle errors.
 void execute_built_in(char*, char**, char*, int, int);
-
+// Checks if input contains a pipe or background.
 int contains_pipe_or_back(char**);
 
 int main(int argc, char* argv[]){
@@ -112,42 +112,59 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
+// Tokenizes the user input into tokens by the given delimiter.
 char** tokenize(char* user_input, char* delimiter){
 
+	// Make a string to store a copy of user input in.
 	char* user_copy = calloc(strlen(user_input) + 1, sizeof(char));
 
+	// Check if user_copy was calloced correctly.
 	if(user_copy == NULL){
 		printf("Memory Allocation Failed.\n");
 		return NULL;
 	}
 
+	// Copy user_input into user_copy.
 	strncpy(user_copy, user_input, strlen(user_input) + 1);
 
+	// Allocate memory for token array using malloc.
 	char** token_array = (char**)malloc(sizeof(char*));
 
+	// Check if allocation successful.
 	if(token_array == NULL){
 		printf("Memory Allocation Failed.\n");
 		return NULL;
 	}
 
+	// Get the first token using strtok on the copy of user input.
 	char* token = strtok(user_copy, delimiter);
 
+	// Index of token array.
 	int i = 0;
 
+	// Keep tokenizing until the returned token is NULL.
 	while(token != NULL){
 	
+		// Allocate memory for a copy of the token.
 		char* token_copy = malloc((strlen(token) + 1) * sizeof(char));	
+		// Check if successful.
 		if(token_copy == NULL){
 			printf("Memory Allocation Failed.\n");
 			return NULL;
 		}
+		// Copy the contents of token into token_copy.
 		strncpy(token_copy, token, strlen(token) + 1);
+		// Set the current index in token array equal to the token copy.
 		token_array[i] = token_copy;
+		// Get the next token.
 		token = strtok(NULL, delimiter);
+		// Increment the index.
 		i++;
 
+		// Reallocate more memory in token array for one more token, including space at the end for NULL.
 		char** new_token_array = realloc(token_array, (i + 1) * sizeof(char*));
 		
+		// Check if successful, and if it is, set old token array to new one.
 		if(new_token_array == NULL){
 			printf("Memory Allocation Failed.\n");
 			return NULL;
@@ -155,10 +172,13 @@ char** tokenize(char* user_input, char* delimiter){
 
 	}
 
+	// Set the last index to NULL.
 	token_array[i] = NULL;
 
+	// Free the user copy of user input.
 	free(user_copy);
 
+	// Return the token array.
 	return token_array;
 }
 
@@ -209,6 +229,7 @@ int contains_pipe_or_back(char** token_array){
 
 	while(token_array[i] != NULL){
 
+		// Check if any token equals | or &.
 		if(strcmp(token_array[i], "|") == 0 || strcmp(token_array[i], "&") == 0){
 			return 1;
 		}
@@ -220,6 +241,7 @@ int contains_pipe_or_back(char** token_array){
 // Takes the token array and parses it.
 void parse_input(char** token_array, char* user_input){
 
+	// Index for the token array.
 	int i = 0;
 
 	// Contains the built in command if built in command is detected.
@@ -237,47 +259,33 @@ void parse_input(char** token_array, char* user_input){
 	// The input filename after a input redirect.
 	char* in_filename = NULL;
 
-	// look_for_arguments indicates whether or not a command was found.
  	// num_arguments is the number of arguments currently in either arguments or pipe_arg.
-	int look_for_arguments = 0, num_arguments = 0;
+	int num_arguments = 0;
 
 	// The state of the command, either redirection, background or pipe. -1 by default to indicate normal state.
 	int state = -1;
 
+	// pipe_on indicates if pipe is detected, which prompts the while look to instead add arguments to pipe_arg.
+	// use_built_in is to indicate if pipe or background is present, use non built-in version of built-in command.
 	int pipe_on = 0, use_built_in = 1;
 
+	// Checks if token array contains pipe or background, and sets use_built_in to false if detected.
 	if(contains_pipe_or_back(token_array)){
 		use_built_in = 0;
 	}
 
+	// Loop through all tokens of token array until reaching NULL.
 	while(token_array[i] != NULL){
 
-		if(!look_for_arguments){
-
-			if(is_operator(token_array[i]) != -1){
-				printf("Improper use of %s\n", token_array[i]);
-				return;
-			}
-			else if(use_built_in && is_built_in(token_array[i]) != -1){
-
-				built_in_command = token_array[i];
-                        	look_for_arguments = 1;
-
-			}
-			else{
-
-				if(pipe_on){
-					pipe_arg = add_argument(pipe_arg, token_array[i], num_arguments);
-					num_arguments++;
-				}else {
-					arguments = add_argument(arguments, token_array[i], num_arguments);
-                                	num_arguments++;
-				}
-				look_for_arguments = 1;	
-			}
-
+		if(i == 0 && is_operator(token_array[i]) != -1){
+			printf("Improper use of %s\n", token_array[i]);
+			return;
 		}
-		else if(look_for_arguments){
+		else if(use_built_in && is_built_in(token_array[i]) != -1){
+
+			built_in_command = token_array[i];
+		}
+		else{
 
 			int operator_identity = is_operator(token_array[i]);
 
@@ -342,7 +350,6 @@ void parse_input(char** token_array, char* user_input){
 
 					command_external(arguments, in_filename, out_filename, state);
 					num_arguments = 0;
-					look_for_arguments = 0;
 					state = -1;
 					free(arguments);
 					arguments = NULL;
@@ -356,7 +363,6 @@ void parse_input(char** token_array, char* user_input){
 					}
 	
 					pipe_on = 1;		
-					look_for_arguments = 0;
 					num_arguments = 0;
 
 				}
