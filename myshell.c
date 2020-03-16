@@ -29,6 +29,9 @@ enum Operator {
 	BACKGROUND = 15
 };
 
+// Array for environment variables.
+extern char* environ[];
+
 // Tokenizes the input with the delimiter, and returns an array of string tokens.
 char** tokenize(char* input, char* delimiter);
 // Frees the array of string tokens.
@@ -40,7 +43,7 @@ char** add_argument(char**, char*, int);
 // Accepts a built in command, and decide which command function to call, and handle errors.
 void execute_built_in(char*, char**, char*, int, int);
 // Checks if input contains a pipe or background.
-int contains_pipe_or_back(char**);
+int contains_non_built_in_operator(char**);
 
 int main(int argc, char* argv[]){
 
@@ -223,14 +226,13 @@ char** add_argument(char** arguments, char* add_on, int num_arguments){
 }
 
 // Checks if the token array contains pipe or run in background.
-int contains_pipe_or_back(char** token_array){
+int contains_non_built_in_operator(char** token_array){
 
 	int i = 0;
 
 	while(token_array[i] != NULL){
-
-		// Check if any token equals | or &.
-		if(strcmp(token_array[i], "|") == 0 || strcmp(token_array[i], "&") == 0){
+		// Check if any token equals | , & or <.
+		if(strcmp(token_array[i], "|") == 0 || strcmp(token_array[i], "&") == 0 || strcmp(token_array[i], "<") == 0){
 			return 1;
 		}
 		i++;
@@ -269,8 +271,10 @@ void parse_input(char** token_array, char* user_input){
 	// use_built_in is to indicate if pipe or background is present, use non built-in version of built-in command.
 	int pipe_on = 0, use_built_in = 1;
 
+	int count_redirect = 0;
+
 	// Checks if token array contains pipe or background, and sets use_built_in to false if detected.
-	if(contains_pipe_or_back(token_array)){
+	if(contains_non_built_in_operator(token_array)){
 		use_built_in = 0;
 	}
 
@@ -284,6 +288,7 @@ void parse_input(char** token_array, char* user_input){
 		else if(use_built_in && is_built_in(token_array[i]) != -1){
 
 			built_in_command = token_array[i];
+			use_built_in = 0;
 		}
 		else{
 
@@ -300,6 +305,7 @@ void parse_input(char** token_array, char* user_input){
 					arguments = add_argument(arguments, token_array[i], num_arguments);
 					num_arguments++;
 				}
+				use_built_in = 0;
 			}
 			else{
 				if(operator_identity == REDIRECT_OUTPUT_TRUNC || operator_identity == REDIRECT_OUTPUT_APP || operator_identity == REDIRECT_INPUT){
@@ -439,11 +445,7 @@ void execute_built_in(char* command, char** arguments, char* out_filename, int n
                 }
 		else if(is_built_in(command) == ECHO_COMMAND){
 
-                        if(num_arguments == 0){
-
-                                printf("\n");
-                        }
-                        else command_echo(arguments, out_filename, state);
+                       	command_echo(arguments, out_filename, state);
 
                 }
                 else if(is_built_in(command) == ENVIRON_COMMAND){

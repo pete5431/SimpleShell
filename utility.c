@@ -32,6 +32,8 @@ enum Operator {
         BACKGROUND = 15
 };
 
+extern char** environ;
+
 int is_built_in(char* token){
 
         if(strcmp(token, "exit") == 0){
@@ -298,6 +300,10 @@ void command_help(char* command, char* out_filename, int state){
 
 		if(command_identity == -1){
 			printf("Command not built-in.\n");
+			if(out_fp != NULL){
+				fclose(out_fp);
+			}
+			dup2(original_stdout, 1);
 			return;
 		}
 
@@ -369,6 +375,12 @@ void command_echo(char** arguments, char* out_filename, int state){
                 dup2(fileno(out_fp), 1);
         }
 
+	if(arguments == NULL){
+		printf("\n");
+		dup2(original_stdout, 1);
+		return;
+	}
+
 	while(arguments[i] != NULL){
 
 		printf("%s ", arguments[i]);
@@ -405,11 +417,14 @@ void command_environ(char* out_filename, int state){
                 dup2(fileno(out_fp), 1);
         }
 
-	printf("USER=%s\n", getenv("USER"));
-	printf("PATH=%s\n", getenv("PATH"));
-	printf("PWD=%s\n", getenv("PWD"));
-	printf("LANG=%s\n", getenv("LANG"));
-	printf("HOME=%s\n", getenv("HOME"));
+	int i = 1;
+
+	char *env_var = *environ;
+
+	for( ; env_var; i++){
+		printf("%s\n", env_var);
+		env_var = *(environ + i);
+	}
 
 	if(out_fp != NULL){
 		fclose(out_fp);
@@ -460,6 +475,11 @@ void command_dir(char** arguments, char* out_filename, int state){
 		if(dir == NULL){
 
 			printf("Error: %s not found.\n", arguments[i]);
+
+			if(out_fp != NULL){
+				fclose(out_fp);
+			}
+			dup2(original_stdout, 1);
 
 			break;
 
