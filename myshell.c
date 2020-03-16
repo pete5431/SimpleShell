@@ -29,52 +29,70 @@ enum Operator {
 	BACKGROUND = 15
 };
 
+// Tokenizes the input with the delimiter, and returns an array of string tokens.
 char** tokenize(char* input, char* delimiter);
+// Frees the array of string tokens.
 void free_token_array(char** token_array);
+// Parses the array of string tokens, and calls the appropriate function based off command, and handle errors.
 void parse_input(char** token_array, char* user_input);
+// Add argument to the arguments array or pipe arguments array.
 char** add_argument(char**, char*, int);
+// Accepts a built in command, and decide which command function to call, and handle errors.
 void execute_built_in(char*, char**, char*, int, int);
+
+int contains_pipe_or_back(char**);
 
 int main(int argc, char* argv[]){
 
+	// Indicates if bash mode is on, default is off.
 	int bash_mode_on = 0;
+	// File pointer for bash file.
 	FILE* bash_fp;
 
+	// If shell executable was executed with a batch file.
 	if(argc == 2){
 		
+		// Open the batch file in read mode.
 		bash_fp = fopen(argv[1], "r");
 
+		// Check for if open failed. If so exit shell.
 		if(bash_fp == NULL){
 
 			printf("File open failed.\n");
 			exit(0);
-
 		}
 
+		// Turn bash mode on if open file was successful.
 		bash_mode_on = 1;
 
 	}
 	else if(argc > 2){
-		
+		// If arguments to shell executable was more than one.
 		printf("Too many arguments to myshell.\n");
 		exit(0);
 	}
 
+	// String for storing user input entered after shell prompt.
 	char* user_input = NULL;
+	// Size for getline.
 	size_t size = 0;
 
+	// The shell will continue running until the exit command is typed.
 	while(1){
 
+		// If bash mode is on read input from file instead.
 		if(bash_mode_on){
 
 			getline(&user_input, &size, bash_fp);
 
+			// Upon reaching EOF, close file, and exit shell.
 			if(feof(bash_fp)){
 				fclose(bash_fp);
 				exit(0);
 			}
 
 		}else{
+			// Get input from stdin.
 
 			printf("myshell%s> ", getenv("PWD"));
 
@@ -141,10 +159,12 @@ char** tokenize(char* user_input, char* delimiter){
 	return token_array;
 }
 
+// Frees the passed token array.
 void free_token_array(char** token_array){
 
 	int i = 0;
 
+	// Frees each token, and then the array itself.
 	while(token_array[i] != NULL){
 		free(token_array[i]);
 		i++;
@@ -152,10 +172,13 @@ void free_token_array(char** token_array){
 	free(token_array);
 }
 
+// Add arguments to the passed arguments array, with the specified string to add on, and the current number of arguments.
 char** add_argument(char** arguments, char* add_on, int num_arguments){
 
+	// Reallocs more memory for added arguments. The + 2 is so that theres space for NULL.
 	char** new_arguments = realloc(arguments, (num_arguments + 2) * sizeof(char*));
 
+	// Check to make sure reallocation was successful. Set old arguments to new arguments if successful.
         if(new_arguments == NULL){
 
 		printf("Error: Memory allocation failed.\n");
@@ -163,15 +186,31 @@ char** add_argument(char** arguments, char* add_on, int num_arguments){
 		if(arguments != NULL){
 			free(arguments);
 		}
-
 	}
 	else arguments = new_arguments;
 
+	// Add on the new argument.
 	arguments[num_arguments] = add_on;
 
+	// Add NULL to end of the arguments.
 	arguments[num_arguments + 1] = NULL;
 
+	// Return the arguments array.
 	return arguments;
+}
+
+int contains_pipe_or_back(char** token_array){
+
+	int i = 0;
+
+	while(token_array[i] != NULL){
+
+		if(strcmp(token_array[i], "|") == 0 || strcmp(token_array[i], "&") == 0){
+			return 1;
+		}
+		i++;
+	}
+	return 0;
 }
 
 void parse_input(char** token_array, char* user_input){
@@ -192,13 +231,17 @@ void parse_input(char** token_array, char* user_input){
 
 	int state = -1;
 
-	int pipe_on = 0;
+	int pipe_on = 0, use_built_in = 1;
+
+	if(contains_pipe_or_back(token_array)){
+		use_built_in = 0;
+	}
 
 	while(token_array[i] != NULL){
 
 		if(!look_for_arguments){
 
-			if(is_built_in(token_array[i]) != -1){
+			if(use_built_in && is_built_in(token_array[i]) != -1){
 
 				built_in_command = token_array[i];
                         	look_for_arguments = 1;
@@ -303,7 +346,12 @@ void parse_input(char** token_array, char* user_input){
 
 				}
 				else if(operator_identity == PIPE){
-					
+				
+					if(token_array[i + 1] == NULL){
+						printf("No argument after pipe.\n");
+						return;
+					}
+	
 					pipe_on = 1;		
 					look_for_arguments = 0;
 					num_arguments = 0;
