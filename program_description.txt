@@ -1,0 +1,188 @@
+PROGRAM NAME: MYSHELL
+
+CIS 3207 Assignment 2 Shell 
+____________________________________________________________________________________________________________________________________
+
+Introduction to the program:
+
+The program is a very toned down version of a Linux/Unix Shell, and in fact is just a stimulation of one. The shell provides a way for the user to communicate with
+
+the OS through certain commands. The shell displays a prompt and after the prompt the user can enter a command. The program determines what command to run, be it a 
+
+built-in command or an external command. Built-in commands are commands that are ran without using a child process made through fork(), and instead are coded in the 
+
+program and run in the parent process. Any other commands not built in are considered external, and ran using a child. The program will support stuff like redirection
+
+and piping, but only single piping. It will also support background execution. 
+
+____________________________________________________________________________________________________________________________________
+
+Program Design:
+
+First of all the program will contain the following commands as built-in:
+
+cd, dir, echo, environ, pause, clr, help, and exit
+
+They do pretty much the same thing as their existing real counterparts (if it has one), with small changes:
+
+*If something is stated to support an operator, it doesn't support any other operator besides the ones mentioned. Or if nothing, then it supports no operators*
+
+cd: Accepts one or no arguments. If no arguments, print the current directory. Otherwise go to the specific directory.
+
+dir: Accepts many arguments. Will print the file contents of the directory names. Supports output redirect.
+
+echo: Accepts many arguments. Will print all the content after it to screen. Supports output redirect.
+
+environ: Prints out all environment variables. Supports output redirect.
+
+pause: Accepts no arguments. Will pause the shell until a key is entered. 
+
+help: Accepts one argument, the command for which help is needed. Prints the built-in manual for it. Supports output redirect.
+
+exit: Accepts no arguments. Will exit the shell.
+
+clr: Clears the screen like clear on regular shell.
+
+There exists a function for each of these built-ins in utility.c. 
+
+cd uses chdir() to change directories, and getcwd to update the PWD environment variable to update the prompt.
+
+dir uses the DIR* pointer and dirent struct to read content names from each directory.
+
+echo is simply a loop to loop through all arguments and print them.
+
+pause uses getchar in a while loop until newline is entered.
+
+environ loops through the array environ to get all environment variables.
+
+help is just a bunch of prints
+
+clr prints a special string to clear the screen.
+
+*All output redirection is done using fopen and dup2 to change stdout to the opened file, and then changed back to normal.*
+__________________________________________________________________
+
+EXTRA DETAILS:
+
+*It is important to note that the program makes it so that if a unsupported operator like pipe is used on one of these built ins, it will instead use the
+	external version of it. This is as intended because the built-ins still serve their function. This is just a extra feature to make it more shell like*
+
+For example: If echo hello | wc -c was entered, normally the built in doesn't support pipes, it will either print hello, or an error.
+	     Instead the program will detect when situations like these happen, and switch to the external version to it prints 6.
+
+To make sure I am not cheating in anyway by accidentally calling a built in using execvp, I made each built in command function print BUILT_IN when they are used.
+This way I made sure that it worked as intended, and built ins used correctly still server their purpose. I removed the prints after testing.
+
+__________________________________________________________________
+
+Next is the parsing of the shell program:
+
+The program parses in these steps:
+
+1. Tokenizes the string input into a bunch of strings using spaces as the delimiter, and puts them all into one token array.
+
+2. The token array is passed to parser, that checks for errors, and builds appropriate commands and arguments for command functions.
+
+3. After each successful function call, certain resources are freed and goes back to the main loop for the shell program.
+
+During the token array parsing step (2), there is a important int variable called state that basically identifies if the command is trying
+
+to use an operator or not, and if so what kinds. The state will change based off the detection of certain operators during the token parsing.
+
+Enums are used for identifying states, and also built in functions. This is simply to make it easier to look at for people looking at the code.
+
+There is a function called is_built_in to identify whether a token is a built in command or not. Otherwise it just starts building the arguments array.
+
+There is also a function called is_operator to identify a operator, and thus allowing the parser to handle operators accordingly.
+
+__________________________________________________________________
+
+Main loop of the shell program and BASH MODE:
+
+The loop simply keeps looping until the command exit is entered, and which this point it frees resources, and exits the loop, thus ending the shell.
+
+There is an option to run the shell in bash mode, where the executable for the shell is ran alongside one argument which is a bash file that contains
+
+commands. In this mode, the program will switch from reading from stdin, to reading from a file until EOF. Each line will be considered a separate 
+
+command, and each line will be parsed and executed accordingly. The shell will automatically exit upon EOF.
+
+__________________________________________________________________
+
+The external command part of the program:
+
+All externals will be executed using the function execvp using the command, and any following arguments including the command.
+
+This allows the program to use the other commands not mentioned in built-ins, that the regular shell has access to. Commands like
+
+ls and such. Eternals will support all redirection, piping, and background.
+
+There is a separate function for externals using pipes.
+
+__________________________________________________________________
+
+Redirection, Piping and Background:
+
+All redirection in this program will have the following forms:
+
+>
+
+< and >
+
+>>
+
+< and >>
+
+All pipes are single pipes, meaning only one | will work correctly.
+
+For background running, running in parallel is supported but in a lesser way.
+
+For parallel background running, it will detect an & and run the command right away with its arguments, and then resets the loop
+
+to look for a new command with arguments. Therefore its not instant, and takes time between executing multiple background processes.
+
+None of these scenarios can be intermixed, and must be used by themselves.
+
+Multiple redirections will be detected as an error.
+
+__________________________________________________________________
+
+Files:
+
+Most of the code relating to the shell itself is in myshell.c, and any code regardin command functions is in utility.c. The myshell.h is the header that 
+
+includes the functions of utility.c. 
+
+The provided makefile simply compiles all of them into a executable myshell.
+
+____________________________________________________________________________________________________________________________________
+
+How the program was tested:
+
+The whole process of making the program is divided into parts, which can be seen in the commit history on the git page. 
+
+The first step that was worked on was the tokenizer. Stuff that needed to work were properly allocated arrays that were null terminated and
+
+most importantly avoiding free errors and seg faults. Once the tokenizer was in order, and no errors are thrown when looping through the array, the
+
+next step was the parser. The parser is basically just taking all those tokens and organizing them into something valid. So the parser is just a bunch of
+
+if conditions to ensure each command is executed properly. The parser went through many edits and overhauls, and could still probably use some work. I mainly
+
+tested the parser through the command functions, because otherwise I can't know if the parser is doing its job correctly. So I started with a small function like
+
+cd because it also allowed me to work on changing the prompt. After that worked, I slowly implemented each built in, and finally when it came down to working on
+
+externals, I needed some way for the parser to differentiate between the built-ins and externals. So I made a function to identify built ins, and same for when it
+
+came down to operators. After everything seemed to work when typed correctly, I moved on to redirection, pipes, and background. They were relatively easy
+
+to implement after having a working shell in order, its just the matter of catching certain errors. The error fixing part took the longest, because there are many
+
+ways something can be entered to interact with your code. In the end, the final product I would say is not the best but works for every requirement. However
+
+there may be some bugs, but not major ones that break the shell completely.
+
+In terms of bug fixing, it was mainly including print statements to narrow down what part was causing the problem. In hindsight I could have probably used a proper
+
+debugger like valgrind or an ide debugger.
