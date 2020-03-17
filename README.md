@@ -2,6 +2,18 @@
 
 How to use the program.
 
+The shell must be ran with ./myshell
+
+Will print a continous prompt:
+
+pathname/myshell> 
+
+Where pathname is the current directory path.
+
+Enter commands after the prompt. There are certain built-ins to know about. Externals, the commands usually used in Linux/Unix Shells can be used normally to an extent.
+
+
+
 BUILT IN COMMANDS:
 
 The following commands are built-in.
